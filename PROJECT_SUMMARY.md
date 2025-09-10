@@ -107,10 +107,17 @@ bun run mcp:start
 - **Error Messages**: User-friendly responses with troubleshooting tips
 
 ### Integration Steps
+
+**Option 1: Using mcp.json (Recommended)**
+1. Set environment variables: `export PTV_DEV_ID="..."` and `export PTV_API_KEY="..."`
+2. Copy `mcp.json` to Claude Desktop config directory
+3. Restart Claude Desktop
+4. Query: *"What's the next train from Flinders Street to South Morang?"*
+
+**Option 2: Manual Configuration**
 1. Copy `examples/claude-desktop-config.json` to Claude Desktop config
 2. Update paths and PTV credentials
 3. Restart Claude Desktop
-4. Query: *"What's the next train from Flinders Street to South Morang?"*
 
 ## 🌟 Key Achievements
 

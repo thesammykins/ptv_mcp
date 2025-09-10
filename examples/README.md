@@ -25,6 +25,8 @@ Run with: `bun examples/individual-tool-examples.ts`
 **Claude Desktop configuration** template for MCP server integration.
 Copy this to your Claude Desktop configuration file and update the paths and credentials.
 
+**Note**: The project now includes a root-level `mcp.json` file that provides a more convenient configuration option with environment variable substitution.
+
 ## Prerequisites
 
 Before running any examples:
@@ -46,6 +48,28 @@ Before running any examples:
    - Copy your Developer ID and API Key to `.env`
 
 ## Claude Desktop Integration
+
+### Option 1: Use mcp.json (Recommended)
+
+1. **Set environment variables:**
+   ```bash
+   export PTV_DEV_ID="your_developer_id_here"
+   export PTV_API_KEY="your_api_key_here"
+   ```
+
+2. **Copy the mcp.json configuration:**
+   ```bash
+   cp mcp.json ~/Library/Application\ Support/Claude/claude_desktop_config.json
+   ```
+
+3. **Start the MCP server:**
+   ```bash
+   bun run mcp:start
+   ```
+
+4. **Restart Claude Desktop** to pick up the new configuration
+
+### Option 2: Manual Configuration
 
 1. **Copy the configuration template:**
    ```bash

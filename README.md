@@ -91,7 +91,40 @@ bun run mcp:dev
 
 ## 🧮 Claude Desktop Integration
 
-Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+### Option 1: Use the provided mcp.json (Recommended)
+
+The project includes a ready-to-use `mcp.json` configuration file:
+
+```bash
+# Set your PTV credentials as environment variables
+export PTV_DEV_ID="your_developer_id_here"
+export PTV_API_KEY="your_api_key_here"
+
+# Copy mcp.json to Claude Desktop config directory
+cp mcp.json ~/Library/Application\ Support/Claude/claude_desktop_config.json
+```
+
+The `mcp.json` file uses environment variable substitution for secure credential management:
+
+```json
+{
+  "mcpServers": {
+    "ptv-local": {
+      "command": "bun",
+      "args": ["run", "src/mcp/server.ts"],
+      "cwd": "/Users/samanthamyers/Development/ptv_mcp",
+      "env": {
+        "PTV_DEV_ID": "${PTV_DEV_ID}",
+        "PTV_API_KEY": "${PTV_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+### Option 2: Manual Configuration
+
+Alternatively, manually add to your Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
 ```json
 {
