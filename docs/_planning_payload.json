@@ -1,0 +1,40 @@
+{
+  "task": "Build an MVP Bun + TypeScript MCP server that exposes three tools against the PTV Timetable API v3 (next_train, line_timetable, how_far), and write documentation on interacting with the API including request signing. Use context7 to fetch and verify PTV v3 docs (endpoints and signing) before coding. Implement caching, retries, and structured logging. Provide unit tests and mocked orchestration tests. No secrets in code/docs; use env vars via MCP config.",
+  "task_context": [
+    {
+      "repo": "/Users/samanthamyers/Development/ptv_mcp",
+      "git": {"branch": "main", "remoteCount": 0, "hasCommits": true},
+      "files_created": ["README.md", "docs/plan.md", "docs/apireference.md", "docs/architecture.md", "docs/refinement-brief.md"],
+      "env": {"os": "macOS 26.0 (arm64)", "node": "v24.6.0", "bun": "not installed", "gh": "2.76.2"}
+    },
+    {
+      "preferences": {
+        "runtime": "Bun + TypeScript (strict)",
+        "formatter": "Prettier",
+        "secrets": "env vars PTV_DEV_ID and PTV_API_KEY via MCP config",
+        "docs_source": "context7 for PTV v3 docs",
+        "tests": "/tests with comments; do not change production code to make tests pass",
+        "caching": "stops and routes (~12h TTL)",
+        "mcp": "conform to latest MCP server SDK; log to MCP server logs"
+      }
+    },
+    {
+      "deliverables": {
+        "docs": ["README.md", "docs/plan.md", "docs/architecture.md", "docs/apireference.md (verified via context7)"],
+        "code": ["src/config.ts", "src/ptv/signing.ts", "src/ptv/http.ts", "src/ptv/types.ts", "src/ptv/client.ts", "src/ptv/cache.ts", "src/features/next_train/tool.ts", "src/features/line_timetable/tool.ts", "src/features/how_far/tool.ts", "src/mcp/server.ts"],
+        "tests": ["tests/signing.test.ts", "tests/http.test.ts", "tests/features/*.test.ts"],
+        "examples": ["optional minimal scripts reading env"]
+      }
+    },
+    {
+      "orchestration": {
+        "next_train": ["resolve origin/destination (train)", "find common route and direction", "departures expand run/route/direction/stop", "validate destination on run via pattern", "attach disruptions and choose earliest realtime"],
+        "line_timetable": ["resolve stop+route (+direction)", "departures for next 60 minutes", "compact formatted list"],
+        "how_far": ["resolve ids and stop coords", "prefer live vehicle positions; compute distance", "ETA from speed or timetable", "fallback to timetable if no live"]
+      },
+      "signing_to_verify": ["hash algorithm", "canonical string (path + devid query; ordering & encoding)", "signature format/case"],
+      "acceptance": ["Flinders Street → South Morang scenario works", "signing verified with doc example", "disruptions included", "how_far uses live when available; reasonable fallback", "tests pass; no secrets in repo"]
+    }
+  ]
+}
+

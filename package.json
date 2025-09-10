@@ -1,0 +1,34 @@
+{
+  "name": "ptv-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Public Transport Victoria (PTV) Timetable API v3",
+  "type": "module",
+  "main": "dist/mcp/server.js",
+  "scripts": {
+    "dev": "bun --watch src/mcp/server.ts",
+    "build": "bun build src/mcp/server.ts --outdir dist --target bun",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage",
+    "format": "prettier --write .",
+    "lint": "tsc --noEmit",
+    "mcp:dev": "bun run src/mcp/server.ts",
+    "mcp:start": "bun run build && node dist/server.js",
+    "mcp:validate": "bun run lint && bun test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.5",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "keywords": ["mcp", "ptv", "transport", "api", "melbourne", "victoria"],
+  "author": "",
+  "license": "MIT"
+}

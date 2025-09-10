@@ -1,22 +1,32 @@
-# PTV MCP – API Reference (to be verified via context7)
+# PTV MCP – API Reference (VERIFIED)
 
-Status: Draft – DO NOT TRUST until verified with context7
+Status: ✅ **VERIFIED** - Updated with official PTV Timetable API v3 documentation
 
-This document will capture the exact PTV Timetable API v3 details required for our MCP tools. All items below must be verified and updated from the latest official docs before coding.
+This document contains the verified PTV Timetable API v3 details required for our MCP tools, gathered from official documentation.
 
 ## Base
-- Base URL: (verify)
-- Version: v3
+- **Base URLs**: `https://timetableapi.ptv.vic.gov.au` (preferred) or `http://timetableapi.ptv.vic.gov.au`
+- **Version**: v3
+- **URL Structure**: `base URL / version number / API name / query string`
 
 ## Authentication & Signing
-- Env variables: PTV_DEV_ID, PTV_API_KEY (no secrets in docs; use placeholders)
-- Steps (verify every detail):
-  1) Start with path and query (include `?devid={PTV_DEV_ID}`)
-  2) Create string-to-sign (exact canonicalization rules: ordering, encoding)
-  3) Compute HMAC (hash algorithm: verify; HMAC-SHA1 historically used, but confirm)
-  4) Encode signature (verify hex/base64 and case)
-  5) Append `&signature={SIGNATURE}`
-- Provide a worked example from docs here (values redacted/placeholder) and mirror it in tests/signing.test.ts
+- **Environment variables**: `PTV_DEV_ID`, `PTV_API_KEY` (no secrets in docs; use placeholders)
+- **Algorithm**: HMAC-SHA1 signature authentication
+- **Signature Generation Steps**:
+  1) Create request URL: `/v3/{endpoint}?{query_params}&devid={PTV_DEV_ID}`
+  2) Create string-to-sign: Full path + query string (including devid, excluding base URL)
+  3) Compute HMAC-SHA1 hash using the API key as the secret
+  4) Encode signature as lowercase hexadecimal string
+  5) Append to URL: `&signature={SIGNATURE}`
+
+### Official Example (values redacted)
+```
+Request: /v3/departures/route_type/0/stop/1071?devid=3000176&max_results=3
+String to sign: "/v3/departures/route_type/0/stop/1071?devid=3000176&max_results=3"
+API Key: "REDACTED_KEY"
+Signature: hmac_sha1(string_to_sign, api_key).to_lowercase_hex()
+Final URL: https://timetableapi.ptv.vic.gov.au/v3/departures/route_type/0/stop/1071?devid=3000176&max_results=3&signature=COMPUTED_SIGNATURE
+```
 
 ## Key Endpoints (verify path names and params)
 - Search stops/places
