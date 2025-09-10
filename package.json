@@ -4,6 +4,9 @@
   "description": "MCP server for Public Transport Victoria (PTV) Timetable API v3 - Data licensed under Creative Commons Attribution 3.0 Australia",
   "type": "module",
   "main": "dist/mcp/server.js",
+  "bin": {
+    "ptv-mcp": "dist/mcp/server.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/thesammykins/ptv_mcp.git"
@@ -14,7 +17,7 @@
   "homepage": "https://github.com/thesammykins/ptv_mcp",
   "scripts": {
     "dev": "bun --watch src/mcp/server.ts",
-    "build": "bun build src/mcp/server.ts --outdir dist/mcp --target bun",
+    "build": "bun build src/mcp/server.ts --outdir dist/mcp --target node && sed -i '' '1s|#!/usr/bin/env bun|#!/usr/bin/env node|' dist/mcp/server.js",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "format": "prettier --write .",

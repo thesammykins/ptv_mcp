@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "ptv": {
-      "command": "bun",
-      "args": ["run", "node_modules/@thesammykins/ptv-mcp/dist/mcp/server.js"],
+      "command": "npx",
+      "args": ["-y", "@thesammykins/ptv-mcp"],
       "env": {
         "PTV_DEV_ID": "your_ptv_developer_id_here",
         "PTV_API_KEY": "your_ptv_api_key_here"
