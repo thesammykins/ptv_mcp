@@ -1,17 +1,11 @@
 {
   "mcpServers": {
-    "ptv-local": {
+    "ptv": {
       "command": "bun",
-      "args": ["run", "src/mcp/server.ts"],
-      "cwd": "/Users/samanthamyers/Development/ptv_mcp",
+      "args": ["run", "node_modules/@thesammykins/ptv-mcp/dist/mcp/server.js"],
       "env": {
-        "PTV_DEV_ID": "${PTV_DEV_ID}",
-        "PTV_API_KEY": "${PTV_API_KEY}",
-        "PTV_BASE_URL": "https://timetableapi.ptv.vic.gov.au",
-        "HTTP_TIMEOUT_MS": "8000",
-        "HTTP_MAX_RETRIES": "3",
-        "CACHE_TTL_HOURS": "12",
-        "LOG_LEVEL": "info"
+        "PTV_DEV_ID": "your_ptv_developer_id_here",
+        "PTV_API_KEY": "your_ptv_api_key_here"
       }
     }
   }
