@@ -132,8 +132,8 @@ export class PtvClient {
   ): Promise<DeparturesResponse> {
     const params = {
       ...options,
-      // Always expand to get full details
-      expand: [EXPAND.RUN, EXPAND.ROUTE, EXPAND.DIRECTION, EXPAND.STOP, EXPAND.DISRUPTION].join(','),
+      // Use ALL expansion to ensure we get complete route, direction, and run data
+      expand: EXPAND.ALL.toString(),
     };
 
     return ptvFetch<DeparturesResponse>(

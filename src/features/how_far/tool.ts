@@ -5,6 +5,7 @@
 
 import { PtvClient } from '../../ptv/client';
 import { ROUTE_TYPE } from '../../ptv/types';
+import { getTimezoneDebugInfo } from '../../utils/melbourne-time';
 import type { 
   ResultStop, 
   ResultRoute, 
@@ -36,9 +37,12 @@ export interface HowFarOutput {
     id: number;
     name: string;
   };
-  approaching?: {
+  approachingTrains: {
     runRef: string;
     destination?: string | undefined;
+    distanceMeters: number;
+    eta: number;
+    accuracy: 'realtime' | 'estimated';
     vehicle?: {
       id?: string | undefined;
       operator?: string | undefined;
@@ -51,16 +55,13 @@ export interface HowFarOutput {
       longitude: number;
       bearing?: number | undefined;
       lastUpdated: string;
-      distanceMeters: number;
-      etaMinutes: number;
-      accuracy: 'realtime' | 'estimated';
     } | undefined;
     scheduledArrival?: {
       scheduled: string;
       estimated?: string | null | undefined;
       platform?: string | null | undefined;
     };
-  };
+  }[];
 }
 
 export const howFarSchema = {
@@ -195,6 +196,7 @@ export class HowFarTool {
           }
         } catch (error: any) {
           console.log(`⚠️  Direction ${direction.direction_name} failed:`, error.message);
+          // 403 errors are common for runs endpoint - this is expected and we'll fall back to schedule
         }
       }
 
@@ -218,6 +220,27 @@ export class HowFarTool {
       }
 
       // Step 6: Build response
+      const approachingTrain = {
+        runRef: closestApproaching.run.run_ref!,
+        destination: closestApproaching.run.destination_name,
+        distanceMeters: Math.round(closestApproaching.distance || 0),
+        eta: Math.round((closestApproaching.eta || 0) * 100) / 100, // Round to 2 decimal places
+        accuracy: closestApproaching.accuracy,
+        vehicle: closestApproaching.run.vehicle_descriptor ? {
+          id: closestApproaching.run.vehicle_descriptor.id,
+          operator: closestApproaching.run.vehicle_descriptor.operator,
+          description: closestApproaching.run.vehicle_descriptor.description,
+          lowFloor: closestApproaching.run.vehicle_descriptor.low_floor,
+          airConditioned: closestApproaching.run.vehicle_descriptor.air_conditioned,
+        } : undefined,
+        realTimePosition: (closestApproaching.distance !== undefined && closestApproaching.run.vehicle_position) ? {
+          latitude: closestApproaching.run.vehicle_position.latitude!,
+          longitude: closestApproaching.run.vehicle_position.longitude!,
+          bearing: closestApproaching.run.vehicle_position.bearing,
+          lastUpdated: closestApproaching.run.vehicle_position.datetime_utc!,
+        } : undefined,
+      };
+      
       const result: HowFarOutput = {
         stop: {
           id: stop.stop_id!,
@@ -237,26 +260,7 @@ export class HowFarTool {
           id: closestApproaching.direction.direction_id,
           name: closestApproaching.direction.direction_name,
         },
-        approaching: {
-          runRef: closestApproaching.run.run_ref!,
-          destination: closestApproaching.run.destination_name,
-          vehicle: closestApproaching.run.vehicle_descriptor ? {
-            id: closestApproaching.run.vehicle_descriptor.id,
-            operator: closestApproaching.run.vehicle_descriptor.operator,
-            description: closestApproaching.run.vehicle_descriptor.description,
-            lowFloor: closestApproaching.run.vehicle_descriptor.low_floor,
-            airConditioned: closestApproaching.run.vehicle_descriptor.air_conditioned,
-          } : undefined,
-          realTimePosition: closestApproaching.distance !== undefined ? {
-            latitude: closestApproaching.run.vehicle_position!.latitude!,
-            longitude: closestApproaching.run.vehicle_position!.longitude!,
-            bearing: closestApproaching.run.vehicle_position!.bearing,
-            lastUpdated: closestApproaching.run.vehicle_position!.datetime_utc!,
-            distanceMeters: Math.round(closestApproaching.distance),
-            etaMinutes: Math.round(closestApproaching.eta || 0),
-            accuracy: closestApproaching.accuracy,
-          } : undefined,
-        },
+        approachingTrains: [approachingTrain],
       };
 
       return {
@@ -267,6 +271,7 @@ export class HowFarTool {
           cacheHits,
           dataFreshness: new Date().toISOString(),
           dataSource: closestApproaching.accuracy,
+          timezone: getTimezoneDebugInfo(),
         },
       };
 

@@ -142,6 +142,16 @@ Alternatively, manually add to your Claude Desktop configuration (`~/Library/App
 }
 ```
 
+## 📚 Documentation
+
+### For AI Agents
+- **[AGENT.md](docs/AGENT.md)** - Comprehensive guide for AI agents on how to effectively use the PTV MCP tools, including best practices, error handling, and sample interactions
+
+### For Developers
+- **[Architecture Overview](docs/architecture.md)** - System design and module structure
+- **[API Reference](docs/apireference.md)** - PTV API v3 integration details
+- **[Development Guide](docs/refinement-brief.md)** - Detailed requirements and implementation notes
+
 ## 🛠️ Tool Usage Examples
 
 ### 1. Next Train (`next-train`)
