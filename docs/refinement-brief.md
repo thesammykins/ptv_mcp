@@ -50,23 +50,59 @@ The agent should be able to ask: “When is the next train from Flinders Street 
    - Minimal scripts to demonstrate client usage and tool calls. Read secrets from env.
 
 ## Orchestration Details
-- next_train(origin: string, destination: string, mode?: string = "train", time?: ISO):
-  1) Search resolve origin & destination stops filtered to trains.
-  2) Identify candidate routes common to both stops; resolve direction toward destination.
-  3) Fetch departures from origin (next 60–90 minutes) with expand=run,route,direction,stop.
-  4) Validate the run services the destination (via stopping pattern/run pattern endpoint or expanded info).
-  5) Return earliest viable departure with realtime/scheduled times, platform, route/direction names, run_id, and disruptions summary.
 
-- line_timetable(stop: string|number, route: string|number, direction?: string|number, time?: ISO):
-  1) Resolve stop/route IDs; determine direction ID (provided or best match).
-  2) Fetch departures for next 60 minutes (expand as needed).
-  3) Return compact list: scheduled+realtime times, headsign/direction, platform.
+### next-train Tool
+**Input Schema:**
+```typescript
+{
+  origin: string;      // Station name (e.g., "Flinders Street")
+  destination: string; // Station name (e.g., "South Morang")
+  time?: string;       // Optional departure time (ISO 8601 or Melbourne local time)
+}
+```
 
-- how_far(stop: string|number, route: string|number, direction?: string|number):
-  1) Resolve IDs and stop coordinates.
-  2) Prefer live data: vehicle positions endpoint filtered by route/direction (verify availability in v3); compute haversine distance to stop; pick approaching service.
-  3) ETA: based on speed if present, otherwise estimate from timetable.
-  4) Fallback to timetable-only estimate if no live.
+**Process:**
+1) Search and resolve origin & destination stops filtered to trains
+2) Find candidate routes common to both stops via route intersection
+3) For each route, get directions and fetch departures with full expansion
+4) Validate runs service the destination stop (simplified validation since routes are pre-filtered)
+5) Select earliest departure within 30-minute window
+6) Return structured response with route/direction/departure/timing info
+
+### line-timetable Tool
+**Input Schema:**
+```typescript
+{
+  stop: string;        // Stop name (e.g., "Southern Cross")
+  route: string;       // Route name (e.g., "Belgrave")
+  direction?: string;  // Optional direction filter ("inbound"/"outbound" or direction name)
+  duration?: number;   // Minutes to show (default 60, max 180)
+}
+```
+
+**Process:**
+1) Resolve stop and find matching route at that stop
+2) Get route directions, filter by direction parameter if provided
+3) Fetch departures for each direction within time window
+4) Sort departures chronologically and return with platform/disruption info
+
+### how-far Tool
+**Input Schema:**
+```typescript
+{
+  stop: string;        // Stop name (e.g., "Melbourne Central")
+  route: string;       // Route name (e.g., "Craigieburn")
+  direction?: string;  // Optional direction filter
+}
+```
+
+**Process:**
+1) Resolve stop coordinates and route information
+2) Get active runs with vehicle position data via PTV runs endpoint
+3) Calculate Haversine distance and ETA for vehicles with GPS coordinates
+4) Select closest approaching vehicle with real-time data
+5) Fallback to schedule-based estimates if no vehicle positions available
+6) Return distance, ETA, and vehicle details with accuracy indicator
 
 ## Signing (to be verified via context7)
 - Confirm:

@@ -66,14 +66,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   
+  if (!args) {
+    throw new Error('Missing arguments for tool call');
+  }
+  
   try {
     switch (name) {
       case 'next-train':
-        return { content: [{ type: 'text', text: JSON.stringify(await nextTrain.execute(args), null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(await nextTrain.execute(args as any), null, 2) }] };
       case 'line-timetable':
-        return { content: [{ type: 'text', text: JSON.stringify(await lineTimetable.execute(args), null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(await lineTimetable.execute(args as any), null, 2) }] };
       case 'how-far':
-        return { content: [{ type: 'text', text: JSON.stringify(await howFar.execute(args), null, 2) }] };
+        return { content: [{ type: 'text', text: JSON.stringify(await howFar.execute(args as any), null, 2) }] };
       default:
         throw new Error(`Unknown tool: ${name}`);
     }

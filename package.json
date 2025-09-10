@@ -1,12 +1,20 @@
 {
-  "name": "ptv-mcp",
+  "name": "@thesammykins/ptv-mcp",
   "version": "0.1.0",
-  "description": "MCP server for Public Transport Victoria (PTV) Timetable API v3",
+  "description": "MCP server for Public Transport Victoria (PTV) Timetable API v3 - Data licensed under Creative Commons Attribution 3.0 Australia",
   "type": "module",
   "main": "dist/mcp/server.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thesammykins/ptv_mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/thesammykins/ptv_mcp/issues"
+  },
+  "homepage": "https://github.com/thesammykins/ptv_mcp",
   "scripts": {
     "dev": "bun --watch src/mcp/server.ts",
-    "build": "bun build src/mcp/server.ts --outdir dist --target bun",
+    "build": "bun build src/mcp/server.ts --outdir dist/mcp --target bun",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "format": "prettier --write .",
@@ -28,7 +36,17 @@
   "engines": {
     "bun": ">=1.0.0"
   },
-  "keywords": ["mcp", "ptv", "transport", "api", "melbourne", "victoria"],
-  "author": "",
-  "license": "MIT"
+  "keywords": [
+    "mcp",
+    "ptv",
+    "transport",
+    "api",
+    "melbourne",
+    "victoria"
+  ],
+  "author": "Samantha Myers",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }

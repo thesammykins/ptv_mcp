@@ -39,7 +39,7 @@ export interface NextTrainOutput {
     runRef?: string | undefined;
     atPlatform?: boolean | undefined;
     scheduledMelbourneTime?: string; // Human-readable Melbourne time
-    estimatedMelbourneTime?: string; // Human-readable Melbourne time for real-time
+    estimatedMelbourneTime?: string | undefined; // Human-readable Melbourne time for real-time
     minutesUntilDeparture?: number; // Minutes from now until departure
   };
   origin?: {
@@ -350,7 +350,7 @@ export class NextTrainTool {
    * Since we've already confirmed the route connects both stations, we can
    * simplify this by just checking if the departure is within our time window
    */
-  private async validateRunServicesDestination(runRef: string, destinationStopId: number): Promise<boolean> {
+  private async validateRunServicesDestination(_runRef: string, _destinationStopId: number): Promise<boolean> {
     // For now, since we've already validated that the route connects both stops,
     // and the PTV runs API isn't reliably returning stopping patterns,
     // we'll assume all runs on the matching route serve both stops.

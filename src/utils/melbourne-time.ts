@@ -86,10 +86,27 @@ export function parseUserTimeToMelbourneUTC(userTime?: string): string {
  * Helper for parsing user-provided times
  */
 function convertTo24Hour(time12h: string): string {
-  const [time, period] = time12h.split(/\s*(AM|PM|am|pm)/);
-  const [hours, minutes] = time.split(':');
+  const parts = time12h.split(/\s*(AM|PM|am|pm)/);
+  const time = parts[0];
+  const period = parts[1];
+
+  if (!time || !time.includes(':')) {
+    throw new Error(`Invalid time format: ${time12h}`);
+  }
+
+  const [hoursStr, minutes] = time.split(':');
   
-  let hours24 = parseInt(hours, 10);
+  if (!hoursStr || minutes === undefined) {
+    throw new Error(`Invalid time format: ${time12h}`);
+  }
+  
+  const hoursNum = parseInt(hoursStr, 10);
+
+  if (Number.isNaN(hoursNum)) {
+    throw new Error(`Invalid time format: ${time12h}`);
+  }
+  
+  let hours24 = hoursNum;
   
   if (period?.toUpperCase() === 'PM' && hours24 !== 12) {
     hours24 += 12;

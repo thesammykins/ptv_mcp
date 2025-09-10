@@ -10,16 +10,17 @@ This document describes the internal structure and data flow for the MCP server.
 - Conform to latest Model Context Protocol server SDK (TypeScript)
 
 ## Modules
-- src/config.ts – Env loading + validation
-- src/ptv/signing.ts – Request signing helpers
-- src/ptv/http.ts – Signed fetch wrapper with retries and timeouts
-- src/ptv/client.ts – Typed PTV methods (search, departures, directions, disruptions, vehicle positions)
-- src/ptv/types.ts – Narrow TS interfaces for fields we use
-- src/ptv/cache.ts – In-memory TTL cache (stops/routes/directions)
-- src/features/next_train/tool.ts – Orchestrates stop/route resolution and earliest valid departure including disruptions
-- src/features/line_timetable/tool.ts – Next 60 min timetable for a stop+route
-- src/features/how_far/tool.ts – Distance/ETA of nearest inbound train to a stop
-- src/mcp/server.ts – Registers tools with JSON schemas, logging, and error normalization
+- src/config.ts – Environment configuration and validation
+- src/mcp/server.ts – MCP server initialization, tool registration, and request routing
+- src/ptv/signing.ts – HMAC-SHA1 signature generation for PTV API authentication
+- src/ptv/http.ts – HTTP client with retries, timeouts, and error handling
+- src/ptv/client.ts – Typed methods for PTV API endpoints (search, departures, routes, directions, disruptions, runs)
+- src/ptv/types.ts – TypeScript interfaces for PTV API responses
+- src/ptv/cache.ts – In-memory TTL cache for stops, routes, and directions (~12 hour TTL)
+- src/features/next_train/tool.ts – Orchestrates stop resolution, route finding, and departure selection
+- src/features/line_timetable/tool.ts – Fetches and formats timetable data for stop+route combinations
+- src/features/how_far/tool.ts – Calculates distance/ETA using vehicle positions or schedule estimates
+- src/utils/melbourne-time.ts – Melbourne timezone utilities with DST handling and user input parsing
 
 ## Data Flow (example: next_train)
 1) Resolve origin/destination stops via search (filtered to trains)
@@ -33,13 +34,60 @@ This document describes the internal structure and data flow for the MCP server.
 - Directions cached per route
 - Memoize per-request repeated lookups
 
+## Melbourne Timezone Handling
+**Core Utilities** (`src/utils/melbourne-time.ts`):
+- Automatic DST detection (AEST/AEDT) using `Australia/Melbourne` timezone
+- User input parsing for various time formats (12/24 hour, ISO 8601)
+- Melbourne time display formatting for human-readable responses
+- UTC conversion for PTV API consumption (all API calls use UTC)
+- Time range calculations for departure windows
+
+**Key Functions**:
+- `parseUserTimeToMelbourneUTC()` - Converts user input to API-compatible UTC
+- `formatUTCForMelbourne()` - Displays API responses in Melbourne local time
+- `getMelbourneTimeRange()` - Generates time windows for timetable queries
+- `getTimezoneDebugInfo()` - Provides debugging context for time-related issues
+
 ## Errors & Logging
-- All tool responses return structured errors when applicable
-- Logs redact secrets; include status, path, and retry info for HTTP failures
+**Structured Error Format**:
+```typescript
+interface MCPError {
+  code: string;           // Error type (STOP_NOT_FOUND, NO_DEPARTURES, etc.)
+  message: string;        // Human-readable description
+  status?: number;        // HTTP status code if applicable
+  path?: string;          // API endpoint that failed
+  cause?: unknown;        // Original error for debugging
+  retryAfter?: number;    // Seconds to wait before retry
+  correlationId?: string; // Request tracking ID
+}
+```
+
+**Logging Standards**:
+- Use structured logging with correlation IDs
+- Redact sensitive data (API keys, signatures) from logs
+- Include timing information for performance monitoring
+- Log retries, rate limiting, and cache hit/miss events
 
 ## Testing
-- Unit: signing (verified with official example), HTTP wrapper (URL build, retries, timeouts)
-- Mocked orchestration tests for features using injected fetch
+**Test Structure** (36 tests across 6 files):
+- Unit tests: `/tests/` directory with descriptive file names
+- Test files include top-level comments describing test goals
+- Never modify production code to make tests pass
+- Use dependency injection for external dependencies (HTTP client, cache)
+
+**Test Categories**:
+- `signing.test.ts` - HMAC-SHA1 signing against official PTV documentation examples
+- `http.test.ts` - HTTP client URL building, retries, and timeout handling
+- `cache.test.ts` - TTL cache behavior and expiration
+- `next_train.test.ts` - Route orchestration with mocked API responses
+- `line_timetable.test.ts` - Timetable fetching and filtering logic
+- `how_far.test.ts` - Distance calculations and vehicle position tracking
+
+**Testing Patterns**:
+- Mock PTV API responses for predictable test scenarios
+- Validate error handling for all failure modes (stop not found, no routes, etc.)
+- Test timezone handling and Melbourne time conversions
+- Verify tool schemas match actual implementation
 
 ## Notes
 - Vehicle positions endpoint must be verified in docs; how_far falls back to schedule-based estimates if no live data.

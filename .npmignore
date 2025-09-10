@@ -1,0 +1,49 @@
+# Development files
+.env
+.env.example
+.env.*
+
+# Source code (only dist/ is needed)
+src/
+tsconfig.json
+.prettierrc
+
+# Tests and development tools
+tests/
+examples/
+docs/
+
+# Build and development artifacts
+node_modules/
+bun.lock
+*.log
+*.lock
+
+# Development documentation
+WARP.md
+ORGANIZATION_COMPLETE.md
+PROJECT_SUMMARY.md
+mcp.json
+
+# Version control
+.git/
+.gitignore
+.github/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Only include essential files for the package:
+# - dist/ (built output)
+# - package.json (package metadata)
+# - README.md (usage documentation)
+# - CONTRIBUTING.md (contributor guidelines)
+# - LICENSE (if present)
