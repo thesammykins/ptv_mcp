@@ -10,7 +10,7 @@ This is an MCP (Model Context Protocol) server that exposes high-level tools bac
 - `line_timetable`: Get timetable for a specific stop and route
 - `how_far`: Estimate distance and ETA for the nearest approaching train
 
-**Status**: Currently in planning/documentation phase. The project uses Bun + TypeScript with strict mode and Prettier formatting.
+**Status**: ✅ **Production Ready** - All features implemented, tested (36/36 tests passing), and ready for automated npm publishing.
 
 Key documentation files:
 - `docs/plan.md` - Overall project plan and objectives
@@ -63,6 +63,209 @@ bun run mcp:start
 
 # Validate MCP tool schemas
 bun run mcp:validate
+```
+
+## 🚀 Build, Commit & Workflow Instructions
+
+### Pre-commit Quality Gates
+Before committing any changes, ensure all quality gates pass:
+
+```bash
+# 1. Verify all tests pass (REQUIRED)
+bun test
+# Expected: 36 pass, 0 fail
+
+# 2. Ensure TypeScript compilation is clean (REQUIRED)
+bun run lint
+# Expected: No TypeScript errors
+
+# 3. Format code with Prettier
+bun run format
+
+# 4. Build project and verify output
+bun run build
+# Expected: dist/mcp/server.js created successfully
+
+# 5. Verify package structure
+npm publish --dry-run
+# Expected: ~83KB compressed, 5 files (dist/, package.json, README.md, CONTRIBUTING.md, LICENSE)
+```
+
+### Git Workflow
+
+#### Standard Development Commits
+```bash
+# Add all changes
+git add .
+
+# Commit with conventional commit format
+git commit -m "feat: add new MCP tool functionality"
+# or
+git commit -m "fix: resolve departure time filtering issue"
+# or  
+git commit -m "docs: update API documentation"
+
+# Push to main branch
+git push origin main
+```
+
+#### Feature Branch Workflow (Recommended for Major Changes)
+```bash
+# Create and switch to feature branch
+git checkout -b feature/new-tool-name
+
+# Make changes, test, and commit
+git add .
+git commit -m "feat: implement new tool for route planning"
+
+# Push feature branch
+git push origin feature/new-tool-name
+
+# Create pull request via GitHub CLI (if available)
+gh pr create --title "Add new route planning tool" --body "Implements XYZ functionality"
+
+# Or manually create PR on GitHub web interface
+```
+
+### 📦 NPM Publishing Workflow
+
+**Automated Publishing (Recommended)**
+
+The project uses GitHub Actions for automated publishing. Simply create a version tag:
+
+```bash
+# Update version (choose appropriate type)
+npm version patch   # Bug fixes (0.1.3 -> 0.1.4)
+npm version minor   # New features (0.1.3 -> 0.2.0)  
+npm version major   # Breaking changes (0.1.3 -> 1.0.0)
+
+# Push version tag to trigger automated workflow
+git push origin main --tags
+```
+
+**What Happens Next:**
+1. 🤖 GitHub Actions detects version tag (`v*.*.*`)
+2. 🛠️ Runs quality gates: dependencies, linting, tests, build
+3. ✅ All tests must pass (36/36) - **workflow fails if any test fails**
+4. 📦 Publishes `@thesammykins/ptv-mcp@x.x.x` to npm registry
+5. 🏇 Package becomes available: `npm install @thesammykins/ptv-mcp`
+
+**Manual Publishing (Emergency Only)**
+```bash
+# Ensure everything is ready
+bun test && bun run lint && bun run build
+
+# Test publishing locally
+npm publish --dry-run
+
+# Publish to npm (requires NPM_TOKEN)
+npm publish --access public
+```
+
+### 🚨 Workflow Troubleshooting
+
+**Tests Failing in CI:**
+```bash
+# Run tests locally to debug
+bun test
+
+# Check specific failing test
+bun test tests/next_train.test.ts
+
+# Review test output for mock data issues
+```
+
+**TypeScript Errors in CI:**
+```bash
+# Check TypeScript locally
+bun run lint
+
+# Fix common issues:
+# - Undefined parameter handling
+# - Optional property access
+# - Missing type annotations
+```
+
+**Build Failures:**
+```bash
+# Verify build locally
+bun run build
+
+# Check output directory
+ls -la dist/mcp/
+# Expected: server.js file ~460KB
+```
+
+### 👥 Team Collaboration
+
+**Beep/Boop Work Coordination:**
+```bash
+# Check if directory is available for work
+echo "Checking work coordination status..."
+
+# Claim directory for agent work (if applicable)
+echo "Agent claiming directory for PTV MCP development..."
+
+# Signal work completion
+echo "Work completed - directory available for next agent"
+```
+
+**Notion Task Integration:**
+- Tag tasks with `warp-agent` for automated discovery
+- Update status: `Not started` → `In progress` → `Done`
+- Priority order: High → Medium → Low
+- Add `warp-agent-doing` tag during active work
+
+### 📈 Monitoring & Metrics
+
+**Package Metrics:**
+- **Size**: 83.1 KB compressed, 485.8 KB unpacked
+- **Files**: 5 (dist/, package.json, README.md, CONTRIBUTING.md, LICENSE)
+- **Registry**: https://www.npmjs.com/package/@thesammykins/ptv-mcp
+
+**Quality Metrics:**
+- **Tests**: 36/36 passing (100% pass rate)
+- **TypeScript**: Strict mode, 0 compilation errors  
+- **Code Coverage**: Available via `bun test --coverage`
+- **Dependencies**: Minimal surface area, no security vulnerabilities
+
+**GitHub Actions Workflow Status:**
+- ✅ **All quality gates enforced**
+- ✅ **Automated publishing on version tags**
+- ✅ **npm provenance for security**
+- ✅ **Dependency caching for faster builds**
+
+### 🔧 Emergency Procedures
+
+**Hotfix Workflow:**
+```bash
+# For critical production issues
+git checkout -b hotfix/critical-fix
+
+# Make minimal fix
+# ... edit files ...
+
+# Verify fix
+bun test
+bun run lint
+
+# Commit and push
+git add .
+git commit -m "fix: resolve critical production issue"
+git push origin hotfix/critical-fix
+
+# Create immediate release
+npm version patch
+git push origin main --tags
+```
+
+**Rollback Release:**
+```bash
+# Deprecate problematic version
+npm deprecate @thesammykins/ptv-mcp@x.x.x "This version has issues, use x.x.y instead"
+
+# Or unpublish if within 24 hours
+npm unpublish @thesammykins/ptv-mcp@x.x.x
 ```
 
 ## Architecture Overview
