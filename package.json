@@ -17,7 +17,7 @@
   "homepage": "https://github.com/thesammykins/ptv_mcp",
   "scripts": {
     "dev": "bun --watch src/mcp/server.ts",
-    "build": "bun build src/mcp/server.ts --outdir dist/mcp --target node && sed -i '' '1s|#!/usr/bin/env bun|#!/usr/bin/env node|' dist/mcp/server.js",
+    "build": "bun build src/mcp/server.ts --outdir dist/mcp --target node && sed -i.bak '1s|#!/usr/bin/env bun|#!/usr/bin/env node|' dist/mcp/server.js && rm -f dist/mcp/server.js.bak",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "format": "prettier --write .",
