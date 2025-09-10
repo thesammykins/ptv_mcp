@@ -1,18 +1,18 @@
 #!/usr/bin/env bun
 
-import { NextTrainTool, nextTrainSchema } from '@/features/next_train/tool';
-import { LineTimetableTool, lineTimetableSchema } from '@/features/line_timetable/tool';
-import { HowFarTool, howFarSchema } from '@/features/how_far/tool';
-import { validateRequiredAuth } from '@/config';
+import { NextTrainTool, nextTrainSchema } from '../features/next_train/tool';
+import { LineTimetableTool, lineTimetableSchema } from '../features/line_timetable/tool';
+import { HowFarTool, howFarSchema } from '../features/how_far/tool';
+import { PtvClient } from '../ptv/client';
+import { config } from '../config';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 // Validate credentials early
-try {
-  validateRequiredAuth();
-} catch (error: any) {
-  console.error('❌ Configuration error:', error.message);
+if (!config.ptvDevId || !config.ptvApiKey) {
+  console.error('❌ Configuration error: PTV_DEV_ID and PTV_API_KEY must be set');
   console.error('💡 Please set PTV_DEV_ID and PTV_API_KEY environment variables');
+  console.error('📋 Copy .env.example to .env and add your credentials');
   process.exit(1);
 }
 
@@ -28,10 +28,13 @@ const server = new Server(
   }
 );
 
+// Initialize PTV client
+const ptvClient = new PtvClient();
+
 // Initialize tool instances
-const nextTrain = new NextTrainTool();
-const lineTimetable = new LineTimetableTool();
-const howFar = new HowFarTool();
+const nextTrain = new NextTrainTool(ptvClient);
+const lineTimetable = new LineTimetableTool(ptvClient);
+const howFar = new HowFarTool(ptvClient);
 
 // Register handlers
 server.setRequestHandler({ method: 'tools/list' } as any, async () => {
@@ -92,3 +95,6 @@ const transport = new StdioServerTransport();
 server.connect(transport);
 
 console.error('🚂 PTV MCP Server started');
+console.error('📡 Connected to PTV API:', config.ptvBaseUrl);
+console.error('🔧 Tools available: next-train, line-timetable, how-far');
+console.error('💡 Ready for Claude Desktop integration');

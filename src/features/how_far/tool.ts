@@ -3,13 +3,13 @@
   Uses real-time vehicle positions or schedule-based estimates
 */
 
-import { PtvClient } from '@/ptv/client';
-import { ROUTE_TYPE } from '@/ptv/types';
+import { PtvClient } from '../../ptv/client';
+import { ROUTE_TYPE } from '../../ptv/types';
 import type { 
   ResultStop, 
   ResultRoute, 
   VehicleRun,
-} from '@/ptv/types';
+} from '../../ptv/types';
 
 export interface HowFarInput {
   stop: string;

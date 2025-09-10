@@ -1,5 +1,5 @@
-import { config } from '@/config';
-import { buildSignedPath } from '@/ptv/signing';
+import { config } from '../config';
+import { buildSignedPath } from './signing';
 
 export interface HttpError extends Error {
   code: string;

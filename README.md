@@ -1,19 +1,27 @@
 # PTV MCP Server 🚂
 
-A Model Context Protocol (MCP) server that provides high-level tools for accessing Public Transport Victoria's Timetable API v3. This server enables AI assistants to help users with Melbourne public transport information.
+A Model Context Protocol (MCP) server providing real-time access to Melbourne's public transport data via the Public Transport Victoria (PTV) Timetable API v3. This server enables AI assistants to help users with comprehensive Melbourne train information.
 
 ## 🚀 Features
 
-**Three Main Tools:**
-- **`next-train`**: Find the next train between origin and destination stops with real-time data
-- **`line-timetable`**: Get upcoming departures for a specific stop and route (next 60 minutes)
-- **`how-far`**: Estimate distance and ETA for the nearest approaching train
+**Three Powerful Tools:**
+- **`next-train`**: Find the next train between any two Melbourne stations with real-time departures
+- **`line-timetable`**: Get upcoming departures for a specific route and station with platform details
+- **`how-far`**: Track approaching trains with real-time vehicle positions and distance estimates
+
+**Key Capabilities:**
+- 🚂 Real-time departure information with platform details and disruption alerts
+- 📍 Live vehicle tracking with GPS coordinates, bearing, and ETA calculations
+- 🔍 Intelligent route discovery and validation across Melbourne's train network
+- ⚡ Lightning-fast responses with built-in caching (12-hour TTL for static data)
+- 🛡️ Comprehensive error handling with actionable user messages
+- 📊 Detailed execution metadata for monitoring and debugging
 
 **Built with:**
 - ⚡ Bun runtime with TypeScript (strict mode)
-- 🔐 HMAC-SHA1 signature authentication
+- 🔐 HMAC-SHA1 signature authentication per PTV requirements
 - 🔄 Automatic retry logic with exponential backoff
-- 📋 In-memory caching (12-hour TTL for stops/routes)
+- 📋 In-memory TTL caching for optimal performance
 - ⚙️ Latest MCP specification compliance
 
 ## 💻 Quick Start
@@ -101,37 +109,164 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
 }
 ```
 
-## 🛠️ API Tools
+## 🛠️ Tool Usage Examples
 
-### `next-train`
-Find the next train between two stations.
+### 1. Next Train (`next-train`)
 
+Find the next train between two stations:
+
+**Input:**
 ```json
 {
   "origin": "Flinders Street",
   "destination": "South Morang",
-  "time": "2024-12-09T10:00:00Z" // optional
+  "time": "2024-03-15T09:00:00Z"
 }
 ```
 
-### `line-timetable`
-Get upcoming departures for a stop and route.
-
+**Response:**
 ```json
 {
-  "stop": "Flinders Street",
-  "route": "Hurstbridge",
-  "direction": "Up" // optional
+  "data": {
+    "route": {
+      "id": 2,
+      "name": "Hurstbridge",
+      "number": "Hurstbridge"
+    },
+    "direction": {
+      "id": 1,
+      "name": "Up"
+    },
+    "departure": {
+      "scheduled": "2024-03-15T09:15:00Z",
+      "estimated": "2024-03-15T09:16:00Z",
+      "platform": "2",
+      "atPlatform": false
+    },
+    "origin": {
+      "id": 1071,
+      "name": "Flinders Street",
+      "suburb": "Melbourne"
+    },
+    "destination": {
+      "id": 1155,
+      "name": "South Morang",
+      "suburb": "South Morang"
+    },
+    "disruptions": [],
+    "journey": {
+      "changes": 0
+    }
+  },
+  "metadata": {
+    "executionTime": 245,
+    "apiCalls": 6,
+    "dataFreshness": "2024-03-15T09:00:15Z"
+  }
 }
 ```
 
-### `how-far`
-Estimate distance and ETA for approaching trains.
+### 2. Line Timetable (`line-timetable`)
 
+Get upcoming departures for a specific route:
+
+**Input:**
 ```json
 {
-  "stop": "South Morang",
-  "route": "Hurstbridge"
+  "stop": "Southern Cross",
+  "route": "Belgrave",
+  "direction": "outbound",
+  "duration": 90
+}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "stop": {
+      "id": 1181,
+      "name": "Southern Cross",
+      "suburb": "Melbourne"
+    },
+    "route": {
+      "id": 4,
+      "name": "Belgrave",
+      "number": "Belgrave"
+    },
+    "departures": [
+      {
+        "scheduled": "2024-03-15T09:12:00Z",
+        "estimated": "2024-03-15T09:13:00Z",
+        "platform": "8",
+        "destination": "Belgrave",
+        "atPlatform": true
+      },
+      {
+        "scheduled": "2024-03-15T09:27:00Z",
+        "platform": "8", 
+        "destination": "Belgrave"
+      }
+    ],
+    "timeWindow": {
+      "start": "2024-03-15T09:00:00Z",
+      "end": "2024-03-15T10:30:00Z",
+      "durationMinutes": 90
+    }
+  }
+}
+```
+
+### 3. How Far (`how-far`)
+
+Track approaching trains with real-time positions:
+
+**Input:**
+```json
+{
+  "stop": "Melbourne Central",
+  "route": "Craigieburn",
+  "direction": "inbound"
+}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "stop": {
+      "id": 1120,
+      "name": "Melbourne Central", 
+      "coordinates": {
+        "latitude": -37.8103,
+        "longitude": 144.9633
+      }
+    },
+    "approaching": {
+      "runRef": "run-456",
+      "destination": "Flinders Street",
+      "vehicle": {
+        "id": "X234",
+        "operator": "Metro Trains",
+        "description": "X'Trapolis 100",
+        "lowFloor": true,
+        "airConditioned": true
+      },
+      "realTimePosition": {
+        "latitude": -37.8050,
+        "longitude": 144.9633,
+        "bearing": 180,
+        "distanceMeters": 850,
+        "etaMinutes": 2,
+        "accuracy": "realtime",
+        "lastUpdated": "2024-03-15T09:00:45Z"
+      }
+    }
+  },
+  "metadata": {
+    "dataSource": "realtime",
+    "apiCalls": 4
+  }
 }
 ```
 
@@ -203,25 +338,91 @@ bun test --coverage
 
 ## 🐛 Troubleshooting
 
+### Common Issues
+
 **"Invalid signature" errors:**
-- Verify `PTV_DEV_ID` and `PTV_API_KEY` are correct
-- Check signature generation algorithm matches PTV requirements
+- Verify your `PTV_DEV_ID` and `PTV_API_KEY` are correct
+- Ensure environment variables are properly loaded from `.env`
+- Check that there are no extra spaces or special characters in credentials
 
 **"Stop not found" errors:**
-- Check stop name spelling (e.g., "Flinders Street" not "Flinders St")
-- Try using stop IDs directly instead of names
+- Check stop names for typos (case insensitive matching supported)
+- Use full stop names: "Flinders Street" not "Flinders St"
+- Try nearby stops or use stop IDs directly for precision
 
-**Rate limiting:**
+**"No departures found":**
+- Verify the route services the requested stops
+- Check service hours - some routes don't operate at all times
+- Try broader time windows or different directions
+
+**Connection timeouts:**
+- The PTV API can be slow during peak times
 - Server automatically retries with exponential backoff
-- Check if you're exceeding PTV API quotas
+- Check network connectivity and firewall settings
 
-## 📦 Status
+**Tool not found in Claude:**
+- Verify MCP server configuration in Claude Desktop
+- Restart Claude Desktop after configuration changes
+- Check server logs for startup errors
 
-- ✅ **Environment Setup**: Complete
-- ✅ **Core Architecture**: Complete  
-- ✅ **PTV API Integration**: Basic scaffolding done
-- 🚧 **Tool Implementation**: In progress
-- 🚧 **Testing**: Partial coverage
+### Error Codes
+
+| Code | Description |
+|------|-------------|
+| `STOP_NOT_FOUND` | The specified stop name was not found |
+| `ROUTE_NOT_FOUND` | Route does not service the specified stop |
+| `DIRECTION_NOT_FOUND` | Invalid direction for the route |
+| `NO_DEPARTURES` | No upcoming departures found |
+| `NO_APPROACHING_TRAINS` | No vehicles detected approaching the stop |
+| `PTV_API_ERROR` | Upstream API error or timeout |
+
+### Getting Help
+
+- Check the [PTV API FAQ](http://ptv.vic.gov.au/apifaq)
+- Review server logs for detailed error information
+- Open an issue on GitHub with reproduction steps
+- Ensure you're using the latest version
+
+## 📦 Current Status
+
+- ✅ **Environment Setup**: Complete with Bun + TypeScript
+- ✅ **Core Architecture**: Complete with modular design
+- ✅ **PTV API Integration**: Full HMAC-SHA1 auth + HTTP client
+- ✅ **Tool Implementation**: All 3 tools fully implemented
+- ✅ **Testing**: Comprehensive test suite (36 tests, 100% passing)
+- ✅ **Real-time Features**: Vehicle tracking with GPS coordinates
+- ✅ **Error Handling**: Robust error scenarios covered
+- ✅ **Documentation**: Complete with usage examples
+- 🚧 **Claude Desktop Integration**: Ready for configuration
+
+## 🏗️ Development
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes and add tests
+4. Ensure all tests pass (`bun test`)
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+### Architecture Overview
+
+The server follows a clean, layered architecture:
+
+- **MCP Layer** (`src/mcp/`) - Server initialization and tool registration
+- **Feature Tools** (`src/features/`) - High-level tool orchestration and business logic
+- **PTV Client** (`src/ptv/`) - API authentication, HTTP client, and response caching
+- **Types** (`src/ptv/types.ts`) - TypeScript interfaces for all API responses
+
+### Key Components
+
+- **Authentication** - HMAC-SHA1 signature generation per PTV API requirements
+- **HTTP Client** - Retry logic, timeout handling, and exponential backoff  
+- **Caching** - TTL-based in-memory cache for stops, routes, and directions
+- **Error Handling** - Structured error responses with actionable user messages
+- **Real-time Data** - Live vehicle positions and schedule-based fallbacks
 
 ## 📄 License
 

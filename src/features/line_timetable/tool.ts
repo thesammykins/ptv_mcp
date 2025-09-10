@@ -3,8 +3,8 @@
   Shows upcoming departures for the next 60 minutes with real-time data
 */
 
-import { PtvClient } from '@/ptv/client';
-import { ROUTE_TYPE } from '@/ptv/types';
+import { PtvClient } from '../../ptv/client';
+import { ROUTE_TYPE } from '../../ptv/types';
 import type { 
   ResultStop, 
   ResultRoute, 
@@ -12,7 +12,7 @@ import type {
   DisruptionItem,
   ExpandedRun,
   ExpandedDirection,
-} from '@/ptv/types';
+} from '../../ptv/types';
 
 export interface LineTimetableInput {
   stop: string;

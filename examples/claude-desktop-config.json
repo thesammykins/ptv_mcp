@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "ptv": {
+      "command": "bun",
+      "args": ["run", "src/mcp/server.ts"],
+      "cwd": "/Users/REPLACE_WITH_YOUR_USERNAME/Development/ptv_mcp",
+      "env": {
+        "PTV_DEV_ID": "REPLACE_WITH_YOUR_PTV_DEVELOPER_ID",
+        "PTV_API_KEY": "REPLACE_WITH_YOUR_PTV_API_KEY"
+      }
+    }
+  }
+}
