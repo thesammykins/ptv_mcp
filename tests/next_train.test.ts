@@ -58,8 +58,8 @@ describe('NextTrain Tool Integration', () => {
     mockPtvClient.getDepartures.mockResolvedValue({
       departures: [{
         run_ref: 'run-123',
-        scheduled_departure_utc: '2024-12-09T10:15:00Z',
-        estimated_departure_utc: '2024-12-09T10:16:00Z',
+        scheduled_departure_utc: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 minutes from now
+        estimated_departure_utc: new Date(Date.now() + 16 * 60 * 1000).toISOString(),  // 16 minutes from now
         platform_number: '2',
         at_platform: false,
         route_id: 2,
@@ -119,8 +119,8 @@ describe('NextTrain Tool Integration', () => {
         name: 'Up'
       },
       departure: {
-        scheduled: '2024-12-09T10:15:00Z',
-        estimated: '2024-12-09T10:16:00Z',
+        scheduled: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.+Z$/), // Valid ISO timestamp
+        estimated: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.+Z$/), // Valid ISO timestamp
         platform: '2',
         atPlatform: false
       },

@@ -98,9 +98,13 @@ describe('HowFar Tool Integration', () => {
       number: 'Hurstbridge'
     });
 
-    expect(result.data.approaching).toMatchObject({
+    expect(result.data.approachingTrains).toHaveLength(1);
+    const approaching = result.data.approachingTrains[0];
+    
+    expect(approaching).toMatchObject({
       runRef: 'run-123',
       destination: 'Hurstbridge',
+      accuracy: 'realtime',
       vehicle: {
         id: 'X123',
         operator: 'Metro Trains',
@@ -110,24 +114,23 @@ describe('HowFar Tool Integration', () => {
       }
     });
 
-    expect(result.data.approaching?.realTimePosition).toMatchObject({
+    expect(approaching.realTimePosition).toMatchObject({
       latitude: -37.8100,
       longitude: 144.9671,
       bearing: 180,
-      accuracy: 'realtime',
     });
     
-    expect(typeof result.data.approaching?.realTimePosition?.lastUpdated).toBe('string');
-    expect(typeof result.data.approaching?.realTimePosition?.distanceMeters).toBe('number');
-    expect(typeof result.data.approaching?.realTimePosition?.etaMinutes).toBe('number');
+    expect(typeof approaching.realTimePosition?.lastUpdated).toBe('string');
+    expect(typeof approaching.distanceMeters).toBe('number');
+    expect(typeof approaching.eta).toBe('number');
 
     // Distance should be approximately 1km (within reasonable range)
-    expect(result.data.approaching!.realTimePosition!.distanceMeters).toBeGreaterThan(800);
-    expect(result.data.approaching!.realTimePosition!.distanceMeters).toBeLessThan(1200);
+    expect(approaching.distanceMeters).toBeGreaterThan(800);
+    expect(approaching.distanceMeters).toBeLessThan(1200);
     
     // ETA should be reasonable (within 5 minutes for 1km)
-    expect(result.data.approaching?.realTimePosition?.etaMinutes).toBeGreaterThan(0);
-    expect(result.data.approaching?.realTimePosition?.etaMinutes).toBeLessThan(5);
+    expect(approaching.eta).toBeGreaterThan(0);
+    expect(approaching.eta).toBeLessThan(5);
 
     // Verify metadata
     expect(result.metadata).toMatchObject({
@@ -185,7 +188,8 @@ describe('HowFar Tool Integration', () => {
       name: 'City (Flinders Street)'
     });
     
-    expect(result.data.approaching?.destination).toBe('Flinders Street');
+    expect(result.data.approachingTrains).toHaveLength(1);
+    expect(result.data.approachingTrains[0].destination).toBe('Flinders Street');
     expect(result.metadata.dataSource).toBe('realtime');
   });
 
@@ -232,13 +236,17 @@ describe('HowFar Tool Integration', () => {
       route: 'Hurstbridge',
     });
 
-    expect(result.data.approaching).toMatchObject({
+    expect(result.data.approachingTrains).toHaveLength(1);
+    const approachingTrain = result.data.approachingTrains[0];
+    
+    expect(approachingTrain).toMatchObject({
       runRef: 'run-126',
-      destination: 'Hurstbridge'
+      destination: 'Hurstbridge',
+      accuracy: 'estimated'
     });
 
     // Should not have real-time position data
-    expect(result.data.approaching?.realTimePosition).toBeUndefined();
+    expect(approachingTrain.realTimePosition).toBeUndefined();
     
     // Metadata should indicate estimated source
     expect(result.metadata.dataSource).toBe('estimated');
@@ -362,12 +370,15 @@ describe('HowFar Tool Integration', () => {
     });
 
     // Distance should be approximately 2km
-    expect(result.data.approaching?.realTimePosition?.distanceMeters).toBeGreaterThan(1800);
-    expect(result.data.approaching?.realTimePosition?.distanceMeters).toBeLessThan(2200);
+    expect(result.data.approachingTrains).toHaveLength(1);
+    const train = result.data.approachingTrains[0];
+    
+    expect(train.distanceMeters).toBeGreaterThan(1800);
+    expect(train.distanceMeters).toBeLessThan(2200);
     
     // ETA should be approximately 2-3 minutes for 2km at 45km/h average
-    expect(result.data.approaching?.realTimePosition?.etaMinutes).toBeGreaterThan(1);
-    expect(result.data.approaching?.realTimePosition?.etaMinutes).toBeLessThan(4);
+    expect(train.eta).toBeGreaterThan(1);
+    expect(train.eta).toBeLessThan(4);
   });
 
   it('should find closest approaching vehicle when multiple vehicles available', async () => {
@@ -415,9 +426,12 @@ describe('HowFar Tool Integration', () => {
     });
 
     // Should return the closest vehicle
-    expect(result.data.approaching?.runRef).toBe('run-close');
+    expect(result.data.approachingTrains).toHaveLength(1);
+    const closestTrain = result.data.approachingTrains[0];
+    
+    expect(closestTrain.runRef).toBe('run-close');
     
     // Distance should be approximately 500m
-    expect(result.data.approaching?.realTimePosition?.distanceMeters).toBeLessThan(800);
+    expect(closestTrain.distanceMeters).toBeLessThan(800);
   });
 });

@@ -47,7 +47,7 @@ jobs:
         run: bun run lint
         
       - name: Run tests
-        run: bun test || echo "⚠️  Tests failed but continuing for demo purposes"
+        run: bun test
         
       - name: Build project
         run: bun run build
