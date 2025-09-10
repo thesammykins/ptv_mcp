@@ -7,6 +7,10 @@ import { PtvClient } from '../ptv/client';
 import { config } from '../config';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
 
 // Validate credentials early
 if (!config.ptvDevId || !config.ptvApiKey) {
@@ -37,7 +41,7 @@ const lineTimetable = new LineTimetableTool(ptvClient);
 const howFar = new HowFarTool(ptvClient);
 
 // Register handlers
-server.setRequestHandler({ method: 'tools/list' } as any, async () => {
+server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
@@ -59,7 +63,7 @@ server.setRequestHandler({ method: 'tools/list' } as any, async () => {
   };
 });
 
-server.setRequestHandler({ method: 'tools/call' } as any, async (request: any) => {
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   
   try {

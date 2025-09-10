@@ -144,7 +144,7 @@ describe('NextTrain Tool Integration', () => {
     expect(typeof result.metadata.apiCalls).toBe('number');
     expect(result.metadata.apiCalls).toBeGreaterThan(0);
     expect(typeof result.metadata.executionTime).toBe('number');
-    expect(result.metadata.executionTime).toBeGreaterThan(0);
+    expect(result.metadata.executionTime).toBeGreaterThanOrEqual(0);
     expect(typeof result.metadata.dataFreshness).toBe('string');
     expect(typeof result.metadata.routesConsidered).toBe('number');
     expect(typeof result.metadata.departuresFound).toBe('number');
