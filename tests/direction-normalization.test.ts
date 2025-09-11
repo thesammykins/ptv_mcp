@@ -32,15 +32,17 @@ describe('Direction Normalization Utility', () => {
     expect(normalizeDirection('   ')).toBeUndefined();
   });
 
-  it('should normalize mixed case string to lowercase', () => {
+  it('should normalize mixed case string to lowercase with synonyms', () => {
     expect(normalizeDirection('Inbound')).toBe('inbound');
     expect(normalizeDirection('OUTBOUND')).toBe('outbound');
-    expect(normalizeDirection('City')).toBe('city');
+    expect(normalizeDirection('City')).toBe('inbound'); // City now maps to inbound
+    expect(normalizeDirection('Flinders')).toBe('inbound');
+    expect(normalizeDirection('Down')).toBe('outbound');
   });
 
-  it('should trim and normalize string input', () => {
-    expect(normalizeDirection('  Up  ')).toBe('up');
-    expect(normalizeDirection('\tDown\n')).toBe('down');
+  it('should trim and normalize string input with synonym mapping', () => {
+    expect(normalizeDirection('  Up  ')).toBe('inbound'); // Up now maps to inbound
+    expect(normalizeDirection('\tDown\n')).toBe('outbound'); // Down now maps to outbound
   });
 
   it('should convert numbers to lowercase strings', () => {

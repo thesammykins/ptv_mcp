@@ -164,7 +164,7 @@ export class LineTimetableTool {
           };
 
           const departures = await this.client.getDepartures(
-            ROUTE_TYPE.TRAIN,
+            matchingRoute.route_type!,
             stop.stop_id!,
             departureOptions
           );
@@ -204,7 +204,7 @@ export class LineTimetableTool {
       console.log(`🚂 Found ${allDepartures.length} departures in the next ${duration} minutes`);
 
       // Step 6: Get disruptions for this route
-      const disruptions = await this.getRelevantDisruptions(matchingRoute.route_id!);
+      const disruptions = await this.getRelevantDisruptions(matchingRoute.route_id!, matchingRoute.route_type);
       apiCalls += 1;
 
       // Step 7: Build response
@@ -289,8 +289,8 @@ export class LineTimetableTool {
       return matchingRoute;
     }
 
-    // Fallback: search all train routes
-    const allRoutes = await this.client.getRoutes(ROUTE_TYPE.TRAIN);
+    // Fallback: search all train routes (both metro and V/Line)
+    const allRoutes = await this.client.getAllTrainRoutes();
     const trainRoutes = allRoutes.routes || [];
 
     // Try exact match in all routes
@@ -313,12 +313,16 @@ export class LineTimetableTool {
   }
 
   /**
-   * Get relevant disruptions for a route
+   * Get relevant disruptions for a route (both metro and regional)
    */
-  private async getRelevantDisruptions(routeId: number): Promise<DisruptionItem[]> {
+  private async getRelevantDisruptions(routeId: number, routeType?: number): Promise<DisruptionItem[]> {
     try {
       const disruptions = await this.client.getDisruptionsByRoute(routeId);
-      return disruptions.disruptions?.metro_train || [];
+      const allDisruptions = [
+        ...(disruptions.disruptions?.metro_train || []),
+        ...(disruptions.disruptions?.regional_train || []),
+      ];
+      return allDisruptions;
     } catch (error: any) {
       console.log('⚠️  Could not fetch disruptions:', error.message);
       return [];
