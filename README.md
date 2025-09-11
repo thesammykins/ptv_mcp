@@ -209,6 +209,8 @@ This project uses automated publishing via GitHub Actions:
 
 ## 🛠️ Tool Usage Examples
 
+**The PTV MCP supports both Metro and V/Line regional trains** - you can query journeys like "Southern Cross to Geelong" alongside metro services.
+
 ### 1. Next Train (`next-train`)
 
 Find the next train between two stations:
@@ -282,6 +284,15 @@ Find the next train between two stations:
 }
 ```
 
+**V/Line Regional Example:**
+```json
+{
+  "origin": "Southern Cross",
+  "destination": "Geelong",
+  "time": "2024-03-15T09:30:00Z"
+}
+```
+
 ### 2. Line Timetable (`line-timetable`)
 
 Get upcoming departures for a specific route:
@@ -330,6 +341,16 @@ Get upcoming departures for a specific route:
       "durationMinutes": 90
     }
   }
+}
+```
+
+**V/Line Regional Example:**
+```json
+{
+  "stop": "Southern Cross",
+  "route": "Geelong",
+  "direction": "outbound",
+  "duration": 120
 }
 ```
 
@@ -398,6 +419,16 @@ Track approaching trains with real-time positions:
   }
 }
 ```
+
+**V/Line Regional Example:**
+```json
+{
+  "stop": "Southern Cross",
+  "route": "Geelong",
+  "direction": "outbound"
+}
+```
+*Note: V/Line trains may have limited real-time vehicle position data, with graceful fallback to schedule-based estimates.*
 
 ## 📁 Project Structure
 

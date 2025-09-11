@@ -33,8 +33,8 @@ Final URL: https://timetableapi.ptv.vic.gov.au/v3/departures/route_type/0/stop/1
 ### Search API
 **Endpoint:** `GET /v3/search/{term}`
 **Parameters:**
-- `route_types` - Filter by transport type (0 = train)
-**Used for:** Stop name resolution and discovery
+- `route_types` - Filter by transport type (0 = metro train, 3 = V/Line regional)
+**Used for:** Stop name resolution and discovery for both metro and regional networks
 **Response fields:** `stop_id`, `stop_name`, `stop_suburb`, `stop_latitude`, `stop_longitude`, `route_type`, `routes[]`
 
 ### Routes API
@@ -72,6 +72,7 @@ Final URL: https://timetableapi.ptv.vic.gov.au/v3/departures/route_type/0/stop/1
 ### Disruptions API
 **Endpoint:** `GET /v3/disruptions/route/{route_id}`
 **Used for:** Service alert information
+**Response categories:** `metro_train` (for route_type=0), `regional_train` (for route_type=3)
 **Response fields:** `disruption_id`, `title`, `description`, `url`, `from_date`, `to_date`, `disruption_status`
 
 ### Runs API (Vehicle Positions)
@@ -81,6 +82,7 @@ Final URL: https://timetableapi.ptv.vic.gov.au/v3/departures/route_type/0/stop/1
 - `expand` - Include vehicle position data (0=ALL)
 **Response fields:** `run_ref`, `vehicle_position` (lat/lng/bearing/datetime), `vehicle_descriptor`
 **Used for:** Real-time vehicle tracking in how-far tool
+**Note:** Vehicle positions more commonly available for metro (route_type=0) than V/Line (route_type=3)
 
 ## Conventions
 
@@ -91,7 +93,7 @@ Final URL: https://timetableapi.ptv.vic.gov.au/v3/departures/route_type/0/stop/1
 - `3` = V/Line (Regional train)
 - `4` = Night Bus
 
-**Implementation Note:** PTV MCP filters to trains only (`route_type=0`)
+**Implementation Note:** PTV MCP now supports both Metro (`route_type=0`) and V/Line Regional (`route_type=3`) train services
 
 ### Expand Parameter Values
 Used to include related data in responses:
