@@ -4,7 +4,6 @@
 */
 
 import { PtvClient } from '../../ptv/client';
-import { ROUTE_TYPE } from '../../ptv/types';
 import { normalizeDirection } from '../../utils/normalize-direction';
 import type { 
   ResultStop, 
@@ -204,7 +203,7 @@ export class LineTimetableTool {
       console.log(`🚂 Found ${allDepartures.length} departures in the next ${duration} minutes`);
 
       // Step 6: Get disruptions for this route
-      const disruptions = await this.getRelevantDisruptions(matchingRoute.route_id!, matchingRoute.route_type);
+      const disruptions = await this.getRelevantDisruptions(matchingRoute.route_id!);
       apiCalls += 1;
 
       // Step 7: Build response
@@ -315,7 +314,7 @@ export class LineTimetableTool {
   /**
    * Get relevant disruptions for a route (both metro and regional)
    */
-  private async getRelevantDisruptions(routeId: number, routeType?: number): Promise<DisruptionItem[]> {
+  private async getRelevantDisruptions(routeId: number): Promise<DisruptionItem[]> {
     try {
       const disruptions = await this.client.getDisruptionsByRoute(routeId);
       const allDisruptions = [

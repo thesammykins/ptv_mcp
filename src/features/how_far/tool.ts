@@ -4,7 +4,6 @@
 */
 
 import { PtvClient } from '../../ptv/client';
-import { ROUTE_TYPE } from '../../ptv/types';
 import { normalizeDirection } from '../../utils/normalize-direction';
 import { getTimezoneDebugInfo } from '../../utils/melbourne-time';
 import type { 
