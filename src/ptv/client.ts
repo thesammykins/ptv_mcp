@@ -64,11 +64,13 @@ export class PtvClient {
   }
 
   /**
-   * Find stops by name, filtered to trains only
+   * Find stops by name, filtered to both metro and V/Line trains
    */
   async findTrainStops(stopName: string): Promise<ResultStop[]> {
-    const result = await this.search(stopName, [ROUTE_TYPE.TRAIN]);
-    return result.stops?.filter(stop => stop.route_type === ROUTE_TYPE.TRAIN) || [];
+    const result = await this.search(stopName, [ROUTE_TYPE.TRAIN, ROUTE_TYPE.VLINE]);
+    return result.stops?.filter(stop => 
+      stop.route_type === ROUTE_TYPE.TRAIN || stop.route_type === ROUTE_TYPE.VLINE
+    ) || [];
   }
 
   /**
@@ -91,6 +93,40 @@ export class PtvClient {
     }
 
     return result;
+  }
+
+  /**
+   * Get all train routes (both metro and V/Line) merged together
+   */
+  async getAllTrainRoutes(): Promise<RoutesResponse> {
+    const cacheKey = 'routes:all-trains';
+    const cached = this.routesCache.get(cacheKey);
+    
+    if (cached) {
+      return { routes: cached };
+    }
+
+    // Fetch both metro and V/Line routes in parallel
+    const [metroRoutes, vlineRoutes] = await Promise.all([
+      this.getRoutes(ROUTE_TYPE.TRAIN),
+      this.getRoutes(ROUTE_TYPE.VLINE),
+    ]);
+
+    // Merge routes, ensuring route_type is preserved and deduplicating by route_id
+    const allRoutes = [
+      ...(metroRoutes.routes || []),
+      ...(vlineRoutes.routes || []),
+    ];
+
+    // Deduplicate by route_id (though unlikely to have duplicates across route types)
+    const uniqueRoutes = allRoutes.filter((route, index, arr) => 
+      arr.findIndex(r => r.route_id === route.route_id) === index
+    );
+
+    // Cache the merged results
+    this.routesCache.set(cacheKey, uniqueRoutes);
+
+    return { routes: uniqueRoutes };
   }
 
   /**

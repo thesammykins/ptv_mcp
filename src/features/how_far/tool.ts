@@ -158,7 +158,7 @@ export class HowFarTool {
           // Get runs for this route and direction with vehicle positions
           const runsResponse = await this.client.getRuns(
             matchingRoute.route_id!,
-            ROUTE_TYPE.TRAIN,
+            matchingRoute.route_type!,
             { direction_id: direction.direction_id }
           );
           apiCalls += 1;
@@ -308,8 +308,8 @@ export class HowFarTool {
       return matchingRoute;
     }
 
-    // Fallback: search all train routes
-    const allRoutes = await this.client.getRoutes(ROUTE_TYPE.TRAIN);
+    // Fallback: search all train routes (both metro and V/Line)
+    const allRoutes = await this.client.getAllTrainRoutes();
     const trainRoutes = allRoutes.routes || [];
 
     // Try exact match in all routes
@@ -377,7 +377,7 @@ _bearing?: number
     for (const direction of directions) {
       try {
         const departures = await this.client.getDepartures(
-          ROUTE_TYPE.TRAIN,
+          route.route_type!,
           stop.stop_id!,
           {
             route_id: route.route_id!,
@@ -403,7 +403,7 @@ _bearing?: number
             const mockRun: VehicleRun = {
               run_ref: nextDeparture.run_ref!,
               route_id: route.route_id!,
-              route_type: ROUTE_TYPE.TRAIN,
+              route_type: route.route_type!,
               direction_id: direction.direction_id,
               destination_name: departures.runs?.[nextDeparture.run_ref!]?.destination_name || route.route_name || 'Unknown',
             };

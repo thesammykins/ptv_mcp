@@ -248,15 +248,19 @@ export class NextTrainTool {
     const destRoutes = destination.routes || [];
 
     if (originRoutes.length === 0 || destRoutes.length === 0) {
-      // Fallback: get all train routes and filter
-      const allRoutes = await this.client.getRoutes(ROUTE_TYPE.TRAIN);
-      return allRoutes.routes?.filter(r => r.route_type === ROUTE_TYPE.TRAIN) || [];
+      // Fallback: get all train routes (both metro and V/Line) and filter
+      const allRoutes = await this.client.getAllTrainRoutes();
+      return allRoutes.routes?.filter(r => 
+        r.route_type === ROUTE_TYPE.TRAIN || r.route_type === ROUTE_TYPE.VLINE
+      ) || [];
     }
 
-    // Find intersection of routes that service both stops
+    // Find intersection of routes that service both stops (both metro and V/Line)
     const commonRoutes = originRoutes.filter(originRoute =>
       destRoutes.some(destRoute => destRoute.route_id === originRoute.route_id)
-    ).filter(route => route.route_type === ROUTE_TYPE.TRAIN);
+    ).filter(route => 
+      route.route_type === ROUTE_TYPE.TRAIN || route.route_type === ROUTE_TYPE.VLINE
+    );
 
     return commonRoutes;
   }
@@ -297,7 +301,7 @@ export class NextTrainTool {
         }
         
         const departures = await this.client.getDepartures(
-          ROUTE_TYPE.TRAIN,
+          route.route_type!,
           origin.stop_id!,
           departureOptions
         );
@@ -359,15 +363,18 @@ export class NextTrainTool {
   }
 
   /**
-   * Get relevant disruptions for a route
+   * Get relevant disruptions for a route (both metro and regional)
    */
   private async getRelevantDisruptions(routeId: number): Promise<DisruptionItem[]> {
     try {
       const disruptionsResult = await this.client.getDisruptionsByRoute(routeId);
-      const trainDisruptions = disruptionsResult.disruptions?.metro_train || [];
+      const allDisruptions = [
+        ...(disruptionsResult.disruptions?.metro_train || []),
+        ...(disruptionsResult.disruptions?.regional_train || []),
+      ];
       
       // Filter to only current/active disruptions
-      return trainDisruptions.filter(disruption => {
+      return allDisruptions.filter(disruption => {
         if (!disruption.from_date || !disruption.to_date) return true; // No date range means active
         const now = new Date();
         const from = new Date(disruption.from_date);
