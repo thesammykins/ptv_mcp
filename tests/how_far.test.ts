@@ -13,6 +13,7 @@ const createMockPTVClient = () => ({
   getRuns: jest.fn(),
   getDepartures: jest.fn(),
   getRoutes: jest.fn(),
+  getAllTrainRoutes: jest.fn(),
 });
 
 const createMockStopResponse = (overrides = {}) => ({
@@ -275,8 +276,8 @@ describe('HowFar Tool Integration', () => {
       })
     ]);
 
-    // Mock getRoutes fallback
-    mockPtvClient.getRoutes.mockResolvedValue({
+    // Mock getAllTrainRoutes fallback
+    mockPtvClient.getAllTrainRoutes.mockResolvedValue({
       routes: [
         { route_id: 99, route_name: 'Different Line', route_type: ROUTE_TYPE.TRAIN }
       ]

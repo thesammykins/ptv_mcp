@@ -11,6 +11,7 @@ import { ROUTE_TYPE } from '@/ptv/types';
 const mockPtvClient = {
   findTrainStops: mock(),
   getRoutes: mock(),
+  getAllTrainRoutes: mock(),
   getDirectionsForRoute: mock(), 
   getDepartures: mock(),
   getRunPattern: mock(),
@@ -172,8 +173,8 @@ describe('NextTrain Tool Integration', () => {
       }]);
     });
 
-    // Mock getRoutes to return empty routes array for fallback
-    mockPtvClient.getRoutes.mockResolvedValue({
+    // Mock getAllTrainRoutes to return empty routes array for fallback
+    mockPtvClient.getAllTrainRoutes.mockResolvedValue({
       routes: []
     });
 

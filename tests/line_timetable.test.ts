@@ -13,6 +13,7 @@ const createMockPTVClient = () => ({
   getDepartures: jest.fn(),
   getDisruptionsByRoute: jest.fn(),
   getRoutes: jest.fn(),
+  getAllTrainRoutes: jest.fn(),
 });
 
 const createMockSearchResponse = (stops: any[]) => stops;
@@ -241,8 +242,8 @@ describe('LineTimetable Tool Integration', () => {
       })])[0]
     ]);
 
-    // Mock getRoutes fallback (should not find the route either)
-    mockPtvClient.getRoutes.mockResolvedValue({
+    // Mock getAllTrainRoutes fallback (should not find the route either)
+    mockPtvClient.getAllTrainRoutes.mockResolvedValue({
       routes: [
         { route_id: 99, route_name: 'Different Line', route_type: ROUTE_TYPE.TRAIN }
       ]
