@@ -1,6 +1,6 @@
 {
   "name": "@thesammykins/ptv-mcp",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "MCP server for Public Transport Victoria (PTV) Timetable API v3 - Data licensed under Creative Commons Attribution 3.0 Australia",
   "type": "module",
   "main": "dist/mcp/server.js",

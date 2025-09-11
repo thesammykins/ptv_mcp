@@ -5,13 +5,13 @@
 
 import { PtvClient } from '../../ptv/client';
 import { ROUTE_TYPE } from '../../ptv/types';
+import { normalizeDirection } from '../../utils/normalize-direction';
 import { getTimezoneDebugInfo } from '../../utils/melbourne-time';
 import type { 
   ResultStop, 
   ResultRoute, 
   VehicleRun,
 } from '../../ptv/types';
-
 export interface HowFarInput {
   stop: string;
   route: string;
@@ -128,13 +128,13 @@ export class HowFarTool {
       let targetDirections = directions.directions || [];
       
       // Filter by direction if specified
-      if (input.direction) {
-        const directionFilter = input.direction.toLowerCase();
+      const normalizedDirection = normalizeDirection(input.direction);
+      if (normalizedDirection) {
         targetDirections = targetDirections.filter(dir => {
           const dirName = dir.direction_name?.toLowerCase() || '';
-          return dirName.includes(directionFilter) || 
-                 (directionFilter === 'inbound' && (dirName.includes('city') || dirName.includes('up'))) ||
-                 (directionFilter === 'outbound' && (dirName.includes('down') || !dirName.includes('city')));
+          return dirName.includes(normalizedDirection) || 
+                 (normalizedDirection === 'inbound' && (dirName.includes('city') || dirName.includes('up'))) ||
+                 (normalizedDirection === 'outbound' && (dirName.includes('down') || !dirName.includes('city')));
         });
 
         if (targetDirections.length === 0) {
