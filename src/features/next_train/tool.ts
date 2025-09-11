@@ -65,7 +65,7 @@ export interface NextTrainOutput {
   timing?: {
     currentTime: string; // Current Melbourne time for context
     searchTime: string; // Time the search was performed
-    within30MinuteWindow: boolean; // Confirms it's within the expected window
+    within60MinuteWindow: boolean; // Confirms it's within the expected window
   };
 }
 
@@ -171,7 +171,7 @@ export class NextTrainTool {
       const estimatedTime = nextDeparture.departure.estimated_departure_utc ? 
         new Date(nextDeparture.departure.estimated_departure_utc) : null;
       const minutesUntilDeparture = Math.round((departureTime.getTime() - currentTime.getTime()) / (1000 * 60));
-      const within30MinuteWindow = minutesUntilDeparture >= 0 && minutesUntilDeparture <= 30;
+      const within60MinuteWindow = minutesUntilDeparture >= 0 && minutesUntilDeparture <= 60;
       
       const result: NextTrainOutput = {
         route: {
@@ -216,7 +216,7 @@ export class NextTrainTool {
         timing: {
           currentTime: formatUTCForMelbourne(currentTime.toISOString()),
           searchTime: formatUTCForMelbourne(new Date().toISOString()),
-          within30MinuteWindow: within30MinuteWindow,
+          within60MinuteWindow: within60MinuteWindow,
         },
       };
 
@@ -293,7 +293,7 @@ export class NextTrainTool {
         const departureOptions: any = {
           route_id: route.route_id!,
           direction_id: direction.direction_id,
-          max_results: 5,
+          max_results: 15, // Increased to get more departures within 60-minute window
         };
         if (requestTime) {
           // Convert user time to Melbourne UTC for API
@@ -310,17 +310,22 @@ export class NextTrainTool {
           continue;
         }
 
-        // Filter departures to only those within the 30-minute window
+        // Filter departures to only those within the 60-minute window, then find the soonest
         const now = new Date();
-        const thirtyMinutesFromNow = new Date(now.getTime() + 30 * 60 * 1000);
+        const sixtyMinutesFromNow = new Date(now.getTime() + 60 * 60 * 1000);
         
         const validDepartures = departures.departures.filter(departure => {
           if (!departure.scheduled_departure_utc) return false;
           const depTime = new Date(departure.scheduled_departure_utc);
-          return depTime >= now && depTime <= thirtyMinutesFromNow;
+          return depTime >= now && depTime <= sixtyMinutesFromNow;
         });
         
-        console.log(`   ⏰ ${validDepartures.length} departures within 30-minute window`);
+        // Sort departures by scheduled time to get the soonest first
+        validDepartures.sort((a, b) => 
+          new Date(a.scheduled_departure_utc!).getTime() - new Date(b.scheduled_departure_utc!).getTime()
+        );
+        
+        console.log(`   ⏰ ${validDepartures.length} departures within 60-minute window`);
         
         // Check departures within the time window
         for (const departure of validDepartures) {
