@@ -9,6 +9,7 @@ import type {
   RunResponse,
   RoutesResponse,
   RunsResponse,
+  StoppingPatternResponse,
   ResultStop,
   ResultRoute,
   Direction,
@@ -316,25 +317,28 @@ export class PtvClient {
   /**
    * Get run pattern (stopping pattern) for a specific run
    * Used to validate if a run services a destination stop
+   * 
+   * NOTE: Uses the correct /v3/pattern/run endpoint to get complete stopping pattern data
    */
   async getRunPattern(
     runRef: string,
     routeType: number,
     options: {
       expand?: number[];
-      stop_id?: number;
       date_utc?: string;
       include_skipped_stops?: boolean;
       include_geopath?: boolean;
     } = {}
-  ): Promise<RunResponse> {
+  ): Promise<StoppingPatternResponse> {
     const params = {
-      ...options,
-      expand: options.expand?.join(',') || [EXPAND.STOP, EXPAND.RUN, EXPAND.ROUTE].join(','),
+      expand: options.expand?.join(',') || [EXPAND.STOP].join(','), // Expand stops by default
+      date_utc: options.date_utc,
+      include_skipped_stops: options.include_skipped_stops?.toString(),
+      include_geopath: options.include_geopath?.toString()
     };
 
-    return ptvFetch<RunResponse>(
-      `/v3/runs/${encodeURIComponent(runRef)}/route_type/${routeType}`,
+    return ptvFetch<StoppingPatternResponse>(
+      `/v3/pattern/run/${encodeURIComponent(runRef)}/route_type/${routeType}`,
       params
     );
   }
