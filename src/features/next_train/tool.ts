@@ -14,60 +14,20 @@ import type {
   ExpandedRoute,
   ExpandedDirection,
   ExpandedRun,
+  NextTrainJourneyOutput
 } from '../../ptv/types';
+import { JourneyTimingEngine, type JourneyPlanningRequest } from '../journey-planning/journey-timing-engine';
 
 export interface NextTrainInput {
   origin: string;
   destination: string;
   time?: string; // ISO 8601
+  allowConnections?: boolean; // Default true - enables connection-aware planning
+  maxConnections?: number; // Default 1 - maximum number of connections allowed
 }
 
-export interface NextTrainOutput {
-  route?: { 
-    id: number; 
-    name: string; 
-    number?: string | undefined;
-  };
-  direction?: { 
-    id: number; 
-    name: string; 
-  };
-  departure?: {
-    scheduled: string;
-    estimated?: string | null | undefined;
-    platform?: string | null | undefined;
-    runRef?: string | undefined;
-    atPlatform?: boolean | undefined;
-    scheduledMelbourneTime?: string; // Human-readable Melbourne time
-    estimatedMelbourneTime?: string | undefined; // Human-readable Melbourne time for real-time
-    minutesUntilDeparture?: number; // Minutes from now until departure
-  };
-  origin?: {
-    id: number;
-    name: string;
-    suburb?: string | undefined;
-  };
-  destination?: {
-    id: number;
-    name: string;
-    suburb?: string | undefined;
-  };
-  disruptions?: {
-    id: number;
-    title: string;
-    description?: string | undefined;
-    url?: string | undefined;
-  }[];
-  journey?: {
-    durationMinutes?: number;
-    changes: number;
-  };
-  timing?: {
-    currentTime: string; // Current Melbourne time for context
-    searchTime: string; // Time the search was performed
-    within60MinuteWindow: boolean; // Confirms it's within the expected window
-  };
-}
+// Use the enhanced NextTrainJourneyOutput for backward compatibility
+export interface NextTrainOutput extends NextTrainJourneyOutput {}
 
 export const nextTrainSchema = {
   type: 'object',
@@ -79,6 +39,14 @@ export const nextTrainSchema = {
       type: 'string', 
       description: 'Departure time in Melbourne time (e.g., "2:30 PM", "14:30", or ISO format). Defaults to current Melbourne time.' 
     },
+    allowConnections: {
+      type: 'boolean',
+      description: 'Enable connection-aware journey planning when direct routes are not available (default: true)'
+    },
+    maxConnections: {
+      type: 'number',
+      description: 'Maximum number of connections/transfers allowed (default: 1)'
+    },
   },
   additionalProperties: false,
 } as const;
@@ -89,7 +57,11 @@ interface ToolError extends Error {
 }
 
 export class NextTrainTool {
-  constructor(private client = new PtvClient()) {}
+  private journeyEngine: JourneyTimingEngine;
+
+  constructor(private client = new PtvClient()) {
+    this.journeyEngine = new JourneyTimingEngine(client);
+  }
 
   async execute(input: NextTrainInput): Promise<{ data: NextTrainOutput; metadata: Record<string, unknown> }> {
     const started = Date.now();
@@ -156,6 +128,13 @@ export class NextTrainTool {
       apiCalls += 1; // Typically cached after first lookup
       
       if (commonRoutes.length === 0) {
+        // If no direct routes found and connections are allowed, try connection-aware planning
+        const allowConnections = input.allowConnections !== false; // Default true
+        if (allowConnections) {
+          console.log('🔄 No direct route found, trying connection-aware journey planning...');
+          return await this.planJourneyWithConnections(input, originStop, destinationStop, apiCalls, cacheHits, started);
+        }
+        
         throw this.createError('NO_ROUTE', `No train routes found connecting ${originStop.stop_name} to ${destinationStop.stop_name}`, 404);
       }
 
@@ -205,7 +184,11 @@ export class NextTrainTool {
       const minutesUntilDeparture = Math.round((departureTime.getTime() - currentTime.getTime()) / (1000 * 60));
       const within60MinuteWindow = minutesUntilDeparture >= 0 && minutesUntilDeparture <= 60;
       
+      // Estimate total journey time (this could be improved with actual stopping pattern data)
+      const totalJourneyMinutes = 45; // Default estimate for direct journeys
+      
       const result: NextTrainOutput = {
+        // Existing backward-compatible fields
         route: {
           id: nextDeparture.route.route_id!,
           name: nextDeparture.route.route_name!,
@@ -221,7 +204,6 @@ export class NextTrainTool {
           platform: nextDeparture.departure.platform_number,
           runRef: nextDeparture.departure.run_ref,
           atPlatform: nextDeparture.departure.at_platform,
-          // Add human-readable timing information
           scheduledMelbourneTime: formatUTCForMelbourne(nextDeparture.departure.scheduled_departure_utc!),
           estimatedMelbourneTime: estimatedTime ? formatUTCForMelbourne(nextDeparture.departure.estimated_departure_utc!) : undefined,
           minutesUntilDeparture: minutesUntilDeparture,
@@ -250,6 +232,13 @@ export class NextTrainTool {
           searchTime: formatUTCForMelbourne(new Date().toISOString()),
           within60MinuteWindow: within60MinuteWindow,
         },
+        
+        // New connection-aware fields
+        is_direct: true,
+        total_journey_minutes: totalJourneyMinutes,
+        legs: [],
+        connections: [],
+        warnings: []
       };
 
       return {
@@ -421,6 +410,104 @@ export class NextTrainTool {
     } catch (error: any) {
       console.warn('Could not fetch disruptions:', error.message);
       return [];
+    }
+  }
+
+  /**
+   * Plan journey with connections when direct routes are not available
+   */
+  private async planJourneyWithConnections(
+    input: NextTrainInput,
+    originStop: ResultStop,
+    destinationStop: ResultStop,
+    initialApiCalls: number,
+    initialCacheHits: number,
+    startTime: number
+  ): Promise<{ data: NextTrainOutput; metadata: Record<string, unknown> }> {
+    try {
+      const request: JourneyPlanningRequest = {
+        origin_stop_id: originStop.stop_id!,
+        destination_stop_id: destinationStop.stop_id!,
+        earliest_departure_utc: input.time ? parseUserTimeToMelbourneUTC(input.time) : undefined,
+        max_results: 1, // Just get the best option
+        search_window_minutes: 180
+      };
+
+      const journeyResult = await this.journeyEngine.planTwoLegJourney(request);
+      
+      if (journeyResult.error_code || journeyResult.journeys.length === 0) {
+        // Convert journey planning errors to NextTrain errors
+        const errorMessage = journeyResult.error_message || 'No feasible connections found';
+        throw this.createError(journeyResult.error_code || 'NO_FEASIBLE_CONNECTIONS', errorMessage, 404);
+      }
+
+      const bestJourney = journeyResult.journeys[0]!;
+      const currentTime = new Date();
+      const firstLeg = bestJourney.legs[0]!;
+      const departureTime = new Date(firstLeg.departure_utc);
+      const minutesUntilDeparture = Math.round((departureTime.getTime() - currentTime.getTime()) / (1000 * 60));
+      const within60MinuteWindow = minutesUntilDeparture >= 0 && minutesUntilDeparture <= 60;
+
+      // Build result in NextTrain format with connection data
+      const result: NextTrainOutput = {
+        // Primary route/departure is the first leg
+        route: {
+          id: firstLeg.route_id,
+          name: firstLeg.route_name,
+        },
+        departure: {
+          scheduled: firstLeg.departure_utc,
+          platform: firstLeg.platform_number,
+          runRef: firstLeg.run_ref,
+          scheduledMelbourneTime: firstLeg.departure_local,
+          minutesUntilDeparture: minutesUntilDeparture,
+        },
+        origin: {
+          id: originStop.stop_id!,
+          name: originStop.stop_name!,
+          suburb: originStop.stop_suburb,
+        },
+        destination: {
+          id: destinationStop.stop_id!,
+          name: destinationStop.stop_name!,
+          suburb: destinationStop.stop_suburb,
+        },
+        disruptions: [], // TODO: Get disruptions for multi-leg journeys
+        journey: {
+          durationMinutes: bestJourney.total_journey_minutes,
+          changes: bestJourney.connections.length,
+        },
+        timing: {
+          currentTime: formatUTCForMelbourne(currentTime.toISOString()),
+          searchTime: formatUTCForMelbourne(new Date().toISOString()),
+          within60MinuteWindow: within60MinuteWindow,
+        },
+        
+        // Connection-aware fields
+        is_direct: false,
+        total_journey_minutes: bestJourney.total_journey_minutes,
+        legs: bestJourney.legs,
+        connections: bestJourney.connections,
+        warnings: bestJourney.warnings
+      };
+
+      return {
+        data: result,
+        metadata: {
+          executionTime: Date.now() - startTime,
+          apiCalls: initialApiCalls + journeyResult.metadata.api_calls,
+          cacheHits: initialCacheHits + journeyResult.metadata.cache_hits,
+          dataFreshness: new Date().toISOString(),
+          routesConsidered: journeyResult.metadata.routes_considered,
+          departuresFound: journeyResult.journeys.length,
+          connectionsEvaluated: journeyResult.metadata.connections_evaluated,
+          timezone: getTimezoneDebugInfo(),
+        },
+      };
+      
+    } catch (error: any) {
+      console.error('❌ Connection-aware journey planning failed:', error);
+      throw error;
     }
   }
 

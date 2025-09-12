@@ -239,3 +239,107 @@ export interface VehicleRun {
 export interface RunsResponse extends ApiResponseBase {
   runs?: VehicleRun[];
 }
+
+// Connection-aware journey planning models
+export interface JourneyLeg {
+  origin_stop_id: number;
+  origin_stop_name: string;
+  destination_stop_id: number;
+  destination_stop_name: string;
+  route_id: number;
+  route_name: string;
+  route_type: number; // 0=metro train, 3=vline
+  run_id?: number;
+  run_ref: string;
+  departure_utc: string; // ISO 8601 UTC
+  arrival_utc: string; // ISO 8601 UTC 
+  departure_local: string; // Human-readable Melbourne time
+  arrival_local: string; // Human-readable Melbourne time
+  platform_number?: string;
+  realtime_used: boolean; // Whether estimated times were used
+  cancellation: boolean; // Whether this leg is canceled/disrupted
+  duration_minutes: number; // Time spent on this leg
+}
+
+export enum ConnectionValidityStatus {
+  FEASIBLE = 'feasible',
+  TIGHT = 'tight', // Within 2 minutes of minimum
+  INFEASIBLE = 'infeasible'
+}
+
+export interface ConnectionInfo {
+  at_stop_id: number;
+  at_stop_name: string;
+  min_required_minutes: number; // From connection policy
+  actual_wait_minutes: number; // Actual time between arrival and next departure
+  from_platform?: string;
+  to_platform?: string;
+  validity_status: ConnectionValidityStatus;
+  warning_message?: string; // e.g., "Tight connection - allow extra time"
+}
+
+export enum JourneyErrorCode {
+  NO_FEASIBLE_CONNECTIONS = 'NO_FEASIBLE_CONNECTIONS',
+  CONNECTION_TOO_TIGHT = 'CONNECTION_TOO_TIGHT', 
+  TRAVEL_TIME_UNAVAILABLE = 'TRAVEL_TIME_UNAVAILABLE',
+  RATE_LIMITED = 'RATE_LIMITED',
+  API_TIMEOUT = 'API_TIMEOUT',
+  PARTIAL_DATA = 'PARTIAL_DATA'
+}
+
+// Enhanced NextTrainOutput with backward compatibility
+export interface NextTrainJourneyOutput {
+  // Backward compatible fields (existing)
+  route?: { 
+    id: number; 
+    name: string; 
+    number?: string | undefined;
+  };
+  direction?: { 
+    id: number; 
+    name: string; 
+  };
+  departure?: {
+    scheduled: string;
+    estimated?: string | null | undefined;
+    platform?: string | null | undefined;
+    runRef?: string | undefined;
+    atPlatform?: boolean | undefined;
+    scheduledMelbourneTime?: string; 
+    estimatedMelbourneTime?: string | undefined; 
+    minutesUntilDeparture?: number; 
+  };
+  origin?: {
+    id: number;
+    name: string;
+    suburb?: string | undefined;
+  };
+  destination?: {
+    id: number;
+    name: string;
+    suburb?: string | undefined;
+  };
+  disruptions?: {
+    id: number;
+    title: string;
+    description?: string | undefined;
+    url?: string | undefined;
+  }[];
+  journey?: {
+    durationMinutes?: number;
+    changes: number;
+  };
+  timing?: {
+    currentTime: string; 
+    searchTime: string; 
+    within60MinuteWindow: boolean; 
+  };
+  
+  // New connection-aware fields
+  is_direct: boolean; // false if connections required
+  total_journey_minutes?: number; // End-to-end journey time
+  legs?: JourneyLeg[]; // Array of journey segments
+  connections?: ConnectionInfo[]; // Transfer details between legs
+  warnings?: string[]; // User-facing warnings
+  error_code?: JourneyErrorCode; // Structured error information
+}

@@ -1,0 +1,115 @@
+{
+  "default_policies": {
+    "metro_to_metro": 5,
+    "metro_to_vline": 8,
+    "vline_to_metro": 10,
+    "vline_to_vline": 12
+  },
+  "station_overrides": {
+    "1181": {
+      "name": "Southern Cross Station", 
+      "policies": {
+        "vline_to_metro": 12,
+        "metro_to_vline": 10,
+        "metro_to_metro": 8,
+        "same_platform": 6,
+        "cross_platform": 10
+      },
+      "platform_groups": {
+        "vline_platforms": ["1", "2", "3", "4", "5", "6"],
+        "metro_platforms": ["7", "8", "9", "10", "11", "12", "13", "14", "15", "16"]
+      }
+    },
+    "1071": {
+      "name": "Flinders Street Station",
+      "policies": {
+        "metro_to_metro": 6,
+        "same_platform": 3,
+        "cross_platform": 7,
+        "city_loop_connection": 5
+      },
+      "platform_groups": {
+        "main_platforms": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"],
+        "underground_platforms": ["12", "13", "14"]
+      }
+    },
+    "1120": {
+      "name": "Melbourne Central Station",
+      "policies": {
+        "metro_to_metro": 5,
+        "same_platform": 3,
+        "cross_platform": 6
+      }
+    },
+    "1155": {
+      "name": "Parliament Station", 
+      "policies": {
+        "metro_to_metro": 5,
+        "same_platform": 3,
+        "cross_platform": 6
+      }
+    },
+    "1108": {
+      "name": "Flagstaff Station",
+      "policies": {
+        "metro_to_metro": 5,
+        "same_platform": 3, 
+        "cross_platform": 6
+      }
+    },
+    "1104": {
+      "name": "North Melbourne Station",
+      "policies": {
+        "metro_to_metro": 6,
+        "vline_to_metro": 8,
+        "metro_to_vline": 7,
+        "same_platform": 4,
+        "cross_platform": 8
+      }
+    },
+    "1068": {
+      "name": "Richmond Station",
+      "policies": {
+        "metro_to_metro": 6,
+        "same_platform": 3,
+        "cross_platform": 8
+      }
+    },
+    "1044": {
+      "name": "Caulfield Station", 
+      "policies": {
+        "metro_to_metro": 7,
+        "same_platform": 4,
+        "cross_platform": 9
+      }
+    }
+  },
+  "interchange_candidates": {
+    "vline_corridors": {
+      "default_interchange": "1181",
+      "alternatives": ["1104"],
+      "description": "V/Line services default to Southern Cross, with North Melbourne as backup"
+    },
+    "metro_cross_city": {
+      "default_interchange": "1071", 
+      "alternatives": ["1120", "1155", "1108"],
+      "description": "Metro cross-city journeys default to Flinders Street, with City Loop alternatives"
+    },
+    "northern_suburbs": {
+      "default_interchange": "1104",
+      "alternatives": ["1071"],
+      "description": "Northern suburb connections via North Melbourne or Flinders Street"
+    }
+  },
+  "tight_connection_threshold": 2,
+  "warnings": {
+    "tight_connection": "Tight connection - allow extra time and consider earlier services",
+    "platform_change_required": "Platform change required - check departure boards",
+    "vline_connection": "V/Line connections may require additional time for ticketing"
+  },
+  "debug": {
+    "description": "Connection time policies based on Melbourne train network structure",
+    "last_updated": "2025-09-12",
+    "sources": ["PTV passenger information", "Melbourne train network topology"]
+  }
+}
