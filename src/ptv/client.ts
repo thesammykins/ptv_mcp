@@ -64,13 +64,148 @@ export class PtvClient {
   }
 
   /**
-   * Find stops by name, filtered to both metro and V/Line trains
+   * Find stops by name, returning both metro and V/Line options
+   * Prioritizes exact name matches, then metro trains, then V/Line
    */
   async findTrainStops(stopName: string): Promise<ResultStop[]> {
-    const result = await this.search(stopName, [ROUTE_TYPE.TRAIN, ROUTE_TYPE.VLINE]);
-    return result.stops?.filter(stop => 
-      stop.route_type === ROUTE_TYPE.TRAIN || stop.route_type === ROUTE_TYPE.VLINE
+    // Search metropolitan trains first (route_type 0)
+    const metroResult = await this.search(stopName, [ROUTE_TYPE.TRAIN]);
+    const metroStops = metroResult.stops?.filter(stop => 
+      stop.route_type === ROUTE_TYPE.TRAIN
     ) || [];
+    
+    // Then search V/Line trains (route_type 3) as additional options
+    const vlineResult = await this.search(stopName, [ROUTE_TYPE.VLINE]);
+    const vlineStops = vlineResult.stops?.filter(stop => 
+      stop.route_type === ROUTE_TYPE.VLINE
+    ) || [];
+    
+    // Combine and sort results with smart prioritization
+    const allStops = [...metroStops, ...vlineStops.filter(vlineStop => 
+      !metroStops.some(metroStop => metroStop.stop_id === vlineStop.stop_id)
+    )];
+    
+    // Sort stops by relevance: exact matches first, then partial matches
+    return this.sortStopsByRelevance(allStops, stopName);
+  }
+
+  /**
+   * Sort stops by relevance to search term, prioritizing exact matches and train connectivity
+   */
+  private sortStopsByRelevance(stops: ResultStop[], searchTerm: string): ResultStop[] {
+    const searchLower = searchTerm.toLowerCase();
+    
+    return stops.sort((a, b) => {
+      const aName = (a.stop_name || '').toLowerCase();
+      const bName = (b.stop_name || '').toLowerCase();
+      
+      // Exact matches get highest priority
+      const aExactMatch = aName === searchLower;
+      const bExactMatch = bName === searchLower;
+      if (aExactMatch && !bExactMatch) return -1;
+      if (!aExactMatch && bExactMatch) return 1;
+      
+      // Then station name exact matches (e.g., "South Morang Station" for "South Morang")
+      const aStationMatch = aName === `${searchLower} station`;
+      const bStationMatch = bName === `${searchLower} station`;
+      if (aStationMatch && !bStationMatch) return -1;
+      if (!aStationMatch && bStationMatch) return 1;
+      
+      // Prioritize stops with train routes to Melbourne (indicates proper train stations)
+      const aMelbourneRoutes = this.countMelbourneRoutes(a);
+      const bMelbourneRoutes = this.countMelbourneRoutes(b);
+      if (aMelbourneRoutes > bMelbourneRoutes) return -1;
+      if (aMelbourneRoutes < bMelbourneRoutes) return 1;
+      
+      // Prefer "Railway Station" in name (indicates main train station)
+      const aIsRailwayStation = aName.includes('railway station');
+      const bIsRailwayStation = bName.includes('railway station');
+      if (aIsRailwayStation && !bIsRailwayStation) return -1;
+      if (!aIsRailwayStation && bIsRailwayStation) return 1;
+      
+      // Then prefer metro over V/Line for same relevance
+      if (a.route_type === ROUTE_TYPE.TRAIN && b.route_type === ROUTE_TYPE.VLINE) return -1;
+      if (a.route_type === ROUTE_TYPE.VLINE && b.route_type === ROUTE_TYPE.TRAIN) return 1;
+      
+      // Finally, prioritize starts-with matches
+      const aStartsWith = aName.startsWith(searchLower);
+      const bStartsWith = bName.startsWith(searchLower);
+      if (aStartsWith && !bStartsWith) return -1;
+      if (!aStartsWith && bStartsWith) return 1;
+      
+      return 0; // Keep original order for equal relevance
+    });
+  }
+  
+  /**
+   * Count routes that connect to Melbourne (indicates proper train stations vs bus stops)
+   */
+  private countMelbourneRoutes(stop: ResultStop): number {
+    if (!stop.routes) return 0;
+    
+    return stop.routes.filter(route => {
+      const routeName = (route.route_name || '').toLowerCase();
+      return routeName.includes('melbourne') || 
+             routeName.includes('gisborne') ||  // Bendigo-Melbourne via Gisborne
+             routeName.includes('southern cross') ||
+             routeName.includes('flinders street');
+    }).length;
+  }
+
+  /**
+   * Find the best matching stops for a journey, considering route type compatibility
+   * Returns the optimal origin/destination pair based on available connections
+   */
+  async findCompatibleStopPair(originName: string, destinationName: string): Promise<{ origin: ResultStop; destination: ResultStop } | null> {
+    const [originStops, destinationStops] = await Promise.all([
+      this.findTrainStops(originName),
+      this.findTrainStops(destinationName),
+    ]);
+
+    if (originStops.length === 0 || destinationStops.length === 0) {
+      return null;
+    }
+
+    // Strategy 1: Try to find metro-to-metro connections first (most common journeys)
+    const metroOrigins = originStops.filter(s => s.route_type === ROUTE_TYPE.TRAIN);
+    const metroDestinations = destinationStops.filter(s => s.route_type === ROUTE_TYPE.TRAIN);
+    if (metroOrigins.length > 0 && metroDestinations.length > 0) {
+      return { origin: metroOrigins[0]!, destination: metroDestinations[0]! };
+    }
+
+    // Strategy 2: V/Line to Metro interchange (e.g., Bendigo → Flinders Street)
+    // Use V/Line origin with Metro destination for proper interchange
+    const vlineOrigins = originStops.filter(s => s.route_type === ROUTE_TYPE.VLINE);
+    if (vlineOrigins.length > 0 && metroDestinations.length > 0) {
+      // Check if destination is a major interchange station
+      const majorInterchanges = ['flinders street', 'southern cross', 'melbourne'];
+      const destName = destinationName.toLowerCase();
+      const isMajorInterchange = majorInterchanges.some(station => destName.includes(station));
+      
+      if (isMajorInterchange) {
+        return { origin: vlineOrigins[0]!, destination: metroDestinations[0]! };
+      }
+    }
+
+    // Strategy 3: Metro to V/Line interchange (e.g., Flinders Street → Bendigo)
+    if (metroOrigins.length > 0 && vlineOrigins.length > 0) {
+      const originName = originStops[0]?.stop_name?.toLowerCase() || '';
+      const majorInterchanges = ['flinders street', 'southern cross', 'melbourne'];
+      const isMajorInterchange = majorInterchanges.some(station => originName.includes(station));
+      
+      if (isMajorInterchange) {
+        return { origin: metroOrigins[0]!, destination: vlineOrigins[0]! };
+      }
+    }
+
+    // Strategy 4: Try V/Line-to-V/Line connections (regional journeys)
+    const vlineDestinations = destinationStops.filter(s => s.route_type === ROUTE_TYPE.VLINE);
+    if (vlineOrigins.length > 0 && vlineDestinations.length > 0) {
+      return { origin: vlineOrigins[0]!, destination: vlineDestinations[0]! };
+    }
+
+    // Strategy 5: Fallback - use the best available stops
+    return { origin: originStops[0]!, destination: destinationStops[0]! };
   }
 
   /**

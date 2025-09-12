@@ -97,25 +97,57 @@ export class NextTrainTool {
     let cacheHits = 0;
 
     try {
-      // Step 1: Resolve origin and destination stops
+      // Step 1: Resolve origin and destination stops using smart compatibility matching
       console.log(`🔍 Searching for stops: ${input.origin} → ${input.destination}`);
       
-      const [originStops, destinationStops] = await Promise.all([
-        this.client.findTrainStops(input.origin),
-        this.client.findTrainStops(input.destination),
-      ]);
-      apiCalls += 2;
+      let originStop: any, destinationStop: any;
+      
+      // Use smart compatibility matching if available, otherwise fall back to original method
+      if (typeof this.client.findCompatibleStopPair === 'function') {
+        const stopPair = await this.client.findCompatibleStopPair(input.origin, input.destination);
+        apiCalls += 2; // Two search calls in findCompatibleStopPair
 
-      if (originStops.length === 0) {
-        throw this.createError('STOP_NOT_FOUND', `Origin stop "${input.origin}" not found`, 404);
-      }
-      if (destinationStops.length === 0) {
-        throw this.createError('STOP_NOT_FOUND', `Destination stop "${input.destination}" not found`, 404);
-      }
+        if (!stopPair) {
+          // Try individual searches to give more specific error messages
+          const [originStops, destinationStops] = await Promise.all([
+            this.client.findTrainStops(input.origin),
+            this.client.findTrainStops(input.destination),
+          ]);
+          apiCalls += 2;
+          
+          if (originStops.length === 0) {
+            throw this.createError('STOP_NOT_FOUND', `Origin stop "${input.origin}" not found`, 404);
+          }
+          if (destinationStops.length === 0) {
+            throw this.createError('STOP_NOT_FOUND', `Destination stop "${input.destination}" not found`, 404);
+          }
+          
+          throw this.createError('STOP_NOT_FOUND', 'Could not find compatible stops for journey', 404);
+        }
 
-      // Use the best matching stops (first result, which is usually most relevant)
-      const originStop = originStops[0]!;
-      const destinationStop = destinationStops[0]!;
+        originStop = stopPair.origin;
+        destinationStop = stopPair.destination;
+        
+        console.log(`🚉 Route types: ${originStop.route_type === 0 ? 'Metro' : 'V/Line'} → ${destinationStop.route_type === 0 ? 'Metro' : 'V/Line'}`);
+      } else {
+        // Fallback to original method for tests/mock clients
+        const [originStops, destinationStops] = await Promise.all([
+          this.client.findTrainStops(input.origin),
+          this.client.findTrainStops(input.destination),
+        ]);
+        apiCalls += 2;
+
+        if (originStops.length === 0) {
+          throw this.createError('STOP_NOT_FOUND', `Origin stop "${input.origin}" not found`, 404);
+        }
+        if (destinationStops.length === 0) {
+          throw this.createError('STOP_NOT_FOUND', `Destination stop "${input.destination}" not found`, 404);
+        }
+
+        // Use the first result from improved findTrainStops (which now has better prioritization)
+        originStop = originStops[0]!;
+        destinationStop = destinationStops[0]!;
+      }
 
       console.log(`✅ Resolved stops: ${originStop.stop_name} (${originStop.stop_id}) → ${destinationStop.stop_name} (${destinationStop.stop_id})`);
 
