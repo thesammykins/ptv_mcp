@@ -137,6 +137,16 @@ export interface PatternDeparture {
   skipped_stops?: ExpandedStop[];
 }
 
+// Stopping pattern response from /v3/pattern/run endpoint
+export interface StoppingPatternResponse extends ApiResponseBase {
+  departures?: PatternDeparture[];
+  stops?: Record<string, ExpandedStop>;
+  routes?: Record<string, ExpandedRoute>;
+  runs?: Record<string, ExpandedRun>;
+  directions?: Record<string, ExpandedDirection>;
+  disruptions?: Record<string, DisruptionItem>;
+}
+
 export interface RunResponse extends ApiResponseBase {
   departures?: PatternDeparture[];
   stops?: Record<string, ExpandedStop>;

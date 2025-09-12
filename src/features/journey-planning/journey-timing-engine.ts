@@ -24,6 +24,8 @@ import {
   PatternDeparture,
   DepartureItem,
   RunResponse,
+  DeparturesResponse,
+  StoppingPatternResponse,
   ResultStop
 } from '../../ptv/types';
 
@@ -60,11 +62,11 @@ export interface JourneyPlanningResult {
 
 export class JourneyTimingEngine {
   private ptvClient: PtvClient;
-  private patternCache: TTLCache<RunResponse>; // Cache stopping patterns for 5 minutes
+  private patternCache: TTLCache<StoppingPatternResponse>; // Cache stopping patterns for 5 minutes
 
   constructor(ptvClient?: PtvClient) {
     this.ptvClient = ptvClient || new PtvClient();
-    this.patternCache = new TTLCache<RunResponse>(5 * 60 * 1000); // 5 minute TTL
+    this.patternCache = new TTLCache<StoppingPatternResponse>(5 * 60 * 1000); // 5 minute TTL
   }
 
   /**
@@ -211,15 +213,15 @@ export class JourneyTimingEngine {
   /**
    * Get stopping pattern for a run (with caching)
    */
-  private async getRunStoppingPattern(runRef: string, routeType: number): Promise<RunResponse> {
+  private async getRunStoppingPattern(runRef: string, routeType: number): Promise<StoppingPatternResponse> {
     const cacheKey = `${runRef}_${routeType}`;
     const cached = this.patternCache.get(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const pattern = await this.ptvClient.getRun(runRef, routeType, {
-      expand: ['stop', 'run', 'route']
+    const pattern = await this.ptvClient.getRunPattern(runRef, routeType, {
+      expand: [1, 2, 3] // STOP, ROUTE, RUN
     });
     
     this.patternCache.set(cacheKey, pattern);
@@ -229,11 +231,12 @@ export class JourneyTimingEngine {
   /**
    * Find the interchange stop in the run's stopping pattern
    */
-  private findInterchangeArrival(stoppingPattern: RunResponse, interchangeStopId: number): PatternDeparture | null {
+  private findInterchangeArrival(stoppingPattern: StoppingPatternResponse, interchangeStopId: number, runRef: string): PatternDeparture | null {
     if (!stoppingPattern.departures) return null;
 
+    // Find the departure that matches our specific run and interchange stop
     for (const departure of stoppingPattern.departures) {
-      if (departure.stop_id === interchangeStopId) {
+      if (departure.stop_id === interchangeStopId && departure.run_ref === runRef) {
         return departure;
       }
     }
@@ -243,11 +246,12 @@ export class JourneyTimingEngine {
   /**
    * Find the destination stop in the run's stopping pattern
    */
-  private findDestinationArrival(stoppingPattern: RunResponse, destinationStopId: number): PatternDeparture | null {
+  private findDestinationArrival(stoppingPattern: StoppingPatternResponse, destinationStopId: number, runRef: string): PatternDeparture | null {
     if (!stoppingPattern.departures) return null;
 
+    // Find the departure that matches our specific run and destination stop
     for (const departure of stoppingPattern.departures) {
-      if (departure.stop_id === destinationStopId) {
+      if (departure.stop_id === destinationStopId && departure.run_ref === runRef) {
         return departure;
       }
     }
@@ -287,7 +291,7 @@ export class JourneyTimingEngine {
       try {
         // Get stopping pattern to validate destination and get arrival time
         const stoppingPattern = await this.getRunStoppingPattern(departure.run_ref!, ROUTE_TYPE.TRAIN);
-        const destinationArrival = this.findDestinationArrival(stoppingPattern, destinationStopId);
+        const destinationArrival = this.findDestinationArrival(stoppingPattern, destinationStopId, departure.run_ref!);
         
         if (destinationArrival) {
           connections.push({
@@ -513,15 +517,18 @@ export class JourneyTimingEngine {
 
     for (const firstLeg of firstLegOptions.slice(0, request.max_results || 3)) {
       try {
-        const stoppingPattern = await this.getRunStoppingPattern(firstLeg.run_ref!, firstLeg.route_type!);
-        if (this.patternCache.has(firstLeg.run_ref!)) {
+        const cacheKey = `${firstLeg.run_ref!}_${firstLeg.route_type!}`;
+        const cachedPattern = this.patternCache.get(cacheKey);
+        if (cachedPattern) {
           cacheHits += 1;
         } else {
           apiCalls += 1;
         }
+        
+        const stoppingPattern = await this.getRunStoppingPattern(firstLeg.run_ref!, firstLeg.route_type!);
 
         // Find interchange arrival time in the stopping pattern
-        const interchangeArrival = this.findInterchangeArrival(stoppingPattern, firstLeg.interchange_stop_id);
+        const interchangeArrival = this.findInterchangeArrival(stoppingPattern, firstLeg.interchange_stop_id, firstLeg.run_ref!);
         if (!interchangeArrival) {
           console.log(`   ⚠️  No interchange stop found in stopping pattern for run ${firstLeg.run_ref}`);
           continue;
