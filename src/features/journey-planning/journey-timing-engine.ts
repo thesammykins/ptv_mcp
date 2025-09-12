@@ -68,131 +68,64 @@ export class JourneyTimingEngine {
   }
 
   /**
-   * Plan a two-leg journey with connection validation
+   * Plan a two-leg journey with connection validation and automatic window extension
    */
   async planTwoLegJourney(request: JourneyPlanningRequest): Promise<JourneyPlanningResult> {
     const startTime = Date.now();
-    let apiCalls = 0;
-    let cacheHits = 0;
-    let routesConsidered = 0;
-    let connectionsEvaluated = 0;
+    
+    console.log(`🚄 Planning journey: ${request.origin_stop_id} → ${request.destination_stop_id}`);
+    const earliestDeparture = request.earliest_departure_utc || new Date().toISOString();
+    const initialWindow = request.search_window_minutes || 180;
+    const searchWindowEnd = new Date(Date.parse(earliestDeparture) + initialWindow * 60 * 1000);
+    console.log(`   Initial search window: ${formatUTCForMelbourne(earliestDeparture)} → ${formatUTCForMelbourne(searchWindowEnd.toISOString())} (${initialWindow} minutes)`);
 
     try {
-      const earliestDeparture = request.earliest_departure_utc || new Date().toISOString();
-      const searchWindowEnd = new Date(Date.parse(earliestDeparture) + (request.search_window_minutes || 180) * 60 * 1000);
-
-      console.log(`🚄 Planning journey: ${request.origin_stop_id} → ${request.destination_stop_id}`);
-      console.log(`   Search window: ${formatUTCForMelbourne(earliestDeparture)} → ${formatUTCForMelbourne(searchWindowEnd.toISOString())}`);
-
-      // Step A: Get candidate first-leg runs
-      const firstLegOptions = await this.getCandidateFirstLegRuns(
-        request.origin_stop_id,
-        earliestDeparture,
-        searchWindowEnd.toISOString(),
-        request.preferred_interchanges
+      // Try initial search window
+      const initialResult = await this.planTwoLegJourneyInternal(request);
+      initialResult.metadata.execution_time_ms = Date.now() - startTime;
+      
+      if (initialResult.journeys.length > 0) {
+        console.log(`   ✅ Found ${initialResult.journeys.length} feasible journey options in initial window`);
+        return initialResult;
+      }
+      
+      // No results found, try extended windows for long-distance journeys
+      console.log('🔄 No connections found in initial window, trying extended search...');
+      
+      const extendedResult = await this.retryWithExtendedWindow(
+        request, 
+        startTime, 
+        initialResult.metadata.api_calls, 
+        initialResult.metadata.cache_hits, 
+        initialResult.metadata.routes_considered, 
+        initialResult.metadata.connections_evaluated
       );
-      apiCalls += 1; // Departures call
-      routesConsidered += firstLegOptions.length;
-
-      if (firstLegOptions.length === 0) {
-        return {
-          journeys: [],
-          error_code: JourneyErrorCode.NO_FEASIBLE_CONNECTIONS,
-          error_message: 'No departures found from origin within search window',
-          metadata: { api_calls: apiCalls, cache_hits: cacheHits, execution_time_ms: Date.now() - startTime, routes_considered: routesConsidered, connections_evaluated: connectionsEvaluated }
-        };
+      
+      if (extendedResult) {
+        return extendedResult;
       }
-
-      console.log(`   Found ${firstLegOptions.length} first-leg candidates`);
-
-      // Step B & C: For each first leg, get stopping pattern and find connections
-      const journeyOptions: JourneyOption[] = [];
-
-      for (const firstLeg of firstLegOptions.slice(0, request.max_results || 3)) {
-        try {
-          const stoppingPattern = await this.getRunStoppingPattern(firstLeg.run_ref!, firstLeg.route_type!);
-          if (this.patternCache.has(firstLeg.run_ref!)) {
-            cacheHits += 1;
-          } else {
-            apiCalls += 1;
-          }
-
-          // Find interchange arrival time in the stopping pattern
-          const interchangeArrival = this.findInterchangeArrival(stoppingPattern, firstLeg.interchange_stop_id);
-          if (!interchangeArrival) {
-            console.log(`   ⚠️  No interchange stop found in stopping pattern for run ${firstLeg.run_ref}`);
-            continue;
-          }
-
-          // Step D: Calculate earliest connection time
-          const minConnectionTime = connectionPolicy.getMinConnectionTime(
-            firstLeg.interchange_stop_id,
-            firstLeg.route_type!,
-            ROUTE_TYPE.TRAIN, // Assuming second leg is metro
-            interchangeArrival.platform_number || undefined,
-            undefined
-          );
-
-          const arrivalTime = new Date(interchangeArrival.scheduled_departure_utc!);
-          const earliestConnectionTime = new Date(arrivalTime.getTime() + minConnectionTime * 60 * 1000);
-
-          console.log(`   📍 ${firstLeg.interchange_name}: arrive ${formatUTCForMelbourne(arrivalTime.toISOString())}, connection after ${formatUTCForMelbourne(earliestConnectionTime.toISOString())} (+${minConnectionTime}min)`);
-
-          // Step E: Find feasible second-leg runs
-          const secondLegOptions = await this.findSecondLegConnections(
-            firstLeg.interchange_stop_id,
-            request.destination_stop_id,
-            earliestConnectionTime.toISOString(),
-            searchWindowEnd.toISOString()
-          );
-          apiCalls += 1; // Departures call for second leg
-          connectionsEvaluated += secondLegOptions.length;
-
-          // Step F: Create complete journey options
-          for (const secondLeg of secondLegOptions.slice(0, 2)) { // Max 2 second legs per first leg
-            const journey = await this.buildCompleteJourney(
-              firstLeg,
-              secondLeg,
-              interchangeArrival,
-              minConnectionTime
-            );
-            if (journey) {
-              journeyOptions.push(journey);
-            }
-          }
-
-        } catch (error) {
-          console.log(`   ❌ Error processing first leg ${firstLeg.run_ref}:`, error);
-          continue;
-        }
-      }
-
-      // Step G: Score and sort journey options
-      if (journeyOptions.length === 0) {
-        return {
-          journeys: [],
-          error_code: JourneyErrorCode.NO_FEASIBLE_CONNECTIONS,
-          error_message: 'No feasible connections found within search window and connection time constraints',
-          metadata: { api_calls: apiCalls, cache_hits: cacheHits, execution_time_ms: Date.now() - startTime, routes_considered: routesConsidered, connections_evaluated: connectionsEvaluated }
-        };
-      }
-
-      journeyOptions.sort((a, b) => a.score - b.score); // Lower score = better (earlier arrival)
-
-      console.log(`   ✅ Found ${journeyOptions.length} feasible journey options`);
-
+      
+      // No connections found even with extended windows
       return {
-        journeys: journeyOptions.slice(0, request.max_results || 3),
-        metadata: { api_calls: apiCalls, cache_hits: cacheHits, execution_time_ms: Date.now() - startTime, routes_considered: routesConsidered, connections_evaluated: connectionsEvaluated }
+        journeys: [],
+        error_code: JourneyErrorCode.NO_FEASIBLE_CONNECTIONS,
+        error_message: 'No feasible connections found within extended search window (up to 8 hours). This may indicate limited service frequency or a very long journey.',
+        metadata: { 
+          api_calls: initialResult.metadata.api_calls, 
+          cache_hits: initialResult.metadata.cache_hits, 
+          execution_time_ms: Date.now() - startTime, 
+          routes_considered: initialResult.metadata.routes_considered, 
+          connections_evaluated: initialResult.metadata.connections_evaluated 
+        }
       };
-
+      
     } catch (error: any) {
       console.error('❌ Journey planning error:', error);
       return {
         journeys: [],
         error_code: JourneyErrorCode.API_TIMEOUT,
         error_message: `Journey planning failed: ${error.message}`,
-        metadata: { api_calls: apiCalls, cache_hits: cacheHits, execution_time_ms: Date.now() - startTime, routes_considered: routesConsidered, connections_evaluated: connectionsEvaluated }
+        metadata: { api_calls: 0, cache_hits: 0, execution_time_ms: Date.now() - startTime, routes_considered: 0, connections_evaluated: 0 }
       };
     }
   }
@@ -475,5 +408,176 @@ export class JourneyTimingEngine {
       console.error('Error building journey:', error);
       return null;
     }
+  }
+
+  /**
+   * Retry journey planning with progressively extended search windows
+   * for long-distance journeys (e.g., regional V/Line to metro connections)
+   */
+  private async retryWithExtendedWindow(
+    originalRequest: JourneyPlanningRequest,
+    startTime: number,
+    initialApiCalls: number,
+    initialCacheHits: number,
+    initialRoutesConsidered: number,
+    initialConnectionsEvaluated: number
+  ): Promise<JourneyPlanningResult | null> {
+    console.log('🔄 No connections found in initial window, trying extended search...');
+    
+    // Progressive window extensions: 4hr, 6hr, 8hr
+    const extendedWindows = [240, 360, 480]; // minutes
+    const originalWindow = originalRequest.search_window_minutes || 180;
+    
+    for (const windowMinutes of extendedWindows) {
+      if (windowMinutes <= originalWindow) continue; // Skip if not actually extending
+      
+      console.log(`   Trying ${windowMinutes} minute search window...`);
+      
+      try {
+        const extendedRequest = {
+          ...originalRequest,
+          search_window_minutes: windowMinutes,
+          max_results: 1 // Just need one feasible option
+        };
+        
+        // Recursively call the main planning logic with extended window
+        const result = await this.planTwoLegJourneyInternal(extendedRequest);
+        
+        if (result.journeys.length > 0) {
+          console.log(`   ✅ Found ${result.journeys.length} journey(s) with ${windowMinutes}min window`);
+          
+          // Update metadata to reflect the extended search
+          result.metadata.api_calls += initialApiCalls;
+          result.metadata.cache_hits += initialCacheHits;
+          result.metadata.execution_time_ms = Date.now() - startTime;
+          result.metadata.routes_considered += initialRoutesConsidered;
+          result.metadata.connections_evaluated += initialConnectionsEvaluated;
+          
+          // Add warning about extended search time
+          if (result.journeys[0]) {
+            result.journeys[0].warnings = result.journeys[0].warnings || [];
+            result.journeys[0].warnings.push(`Journey found using extended ${windowMinutes}-minute search window due to long travel distance.`);
+          }
+          
+          return result;
+        }
+      } catch (error) {
+        console.log(`   ❌ Extended window ${windowMinutes}min failed:`, error);
+        continue;
+      }
+    }
+    
+    console.log('   ⚠️  No feasible connections found even with 8-hour search window');
+    return null;
+  }
+
+  /**
+   * Internal planning logic that can be called recursively with different parameters
+   */
+  private async planTwoLegJourneyInternal(request: JourneyPlanningRequest): Promise<JourneyPlanningResult> {
+    let apiCalls = 0;
+    let cacheHits = 0;
+    let routesConsidered = 0;
+    let connectionsEvaluated = 0;
+
+    const earliestDeparture = request.earliest_departure_utc || new Date().toISOString();
+    const searchWindowMinutes = request.search_window_minutes || 180;
+    const searchWindowEnd = new Date(Date.parse(earliestDeparture) + searchWindowMinutes * 60 * 1000);
+
+    console.log(`   Found ${searchWindowMinutes} min search window: ${formatUTCForMelbourne(earliestDeparture)} → ${formatUTCForMelbourne(searchWindowEnd.toISOString())}`);
+
+    // Step A: Get candidate first-leg runs
+    const firstLegOptions = await this.getCandidateFirstLegRuns(
+      request.origin_stop_id,
+      earliestDeparture,
+      searchWindowEnd.toISOString(),
+      request.preferred_interchanges
+    );
+    apiCalls += 1;
+    routesConsidered += firstLegOptions.length;
+
+    if (firstLegOptions.length === 0) {
+      console.log(`   ⚠️  No departures found from origin within ${searchWindowMinutes}-minute window`);
+      return {
+        journeys: [],
+        error_code: JourneyErrorCode.NO_FEASIBLE_CONNECTIONS,
+        error_message: 'No departures found from origin within search window',
+        metadata: { api_calls: apiCalls, cache_hits: cacheHits, execution_time_ms: 0, routes_considered: routesConsidered, connections_evaluated: connectionsEvaluated }
+      };
+    }
+
+    console.log(`   Found ${firstLegOptions.length} first-leg candidates`);
+
+    // Step B & C: For each first leg, get stopping pattern and find connections
+    const journeyOptions: JourneyOption[] = [];
+
+    for (const firstLeg of firstLegOptions.slice(0, request.max_results || 3)) {
+      try {
+        const stoppingPattern = await this.getRunStoppingPattern(firstLeg.run_ref!, firstLeg.route_type!);
+        if (this.patternCache.has(firstLeg.run_ref!)) {
+          cacheHits += 1;
+        } else {
+          apiCalls += 1;
+        }
+
+        // Find interchange arrival time in the stopping pattern
+        const interchangeArrival = this.findInterchangeArrival(stoppingPattern, firstLeg.interchange_stop_id);
+        if (!interchangeArrival) {
+          console.log(`   ⚠️  No interchange stop found in stopping pattern for run ${firstLeg.run_ref}`);
+          continue;
+        }
+
+        // Calculate earliest connection time
+        const minConnectionTime = connectionPolicy.getMinConnectionTime(
+          firstLeg.interchange_stop_id,
+          firstLeg.route_type!,
+          ROUTE_TYPE.TRAIN,
+          interchangeArrival.platform_number || undefined,
+          undefined
+        );
+
+        const arrivalTime = new Date(interchangeArrival.scheduled_departure_utc!);
+        const earliestConnectionTime = new Date(arrivalTime.getTime() + minConnectionTime * 60 * 1000);
+
+        console.log(`   📍 ${firstLeg.interchange_name}: arrive ${formatUTCForMelbourne(arrivalTime.toISOString())}, connection after ${formatUTCForMelbourne(earliestConnectionTime.toISOString())} (+${minConnectionTime}min)`);
+
+        // Find feasible second-leg runs
+        const secondLegOptions = await this.findSecondLegConnections(
+          firstLeg.interchange_stop_id,
+          request.destination_stop_id,
+          earliestConnectionTime.toISOString(),
+          searchWindowEnd.toISOString()
+        );
+        apiCalls += 1;
+        connectionsEvaluated += secondLegOptions.length;
+        
+        console.log(`   🔍 Found ${secondLegOptions.length} second-leg options from ${firstLeg.interchange_name}`);
+
+        // Create complete journey options
+        for (const secondLeg of secondLegOptions.slice(0, 2)) {
+          const journey = await this.buildCompleteJourney(
+            firstLeg,
+            secondLeg,
+            interchangeArrival,
+            minConnectionTime
+          );
+          if (journey) {
+            journeyOptions.push(journey);
+          }
+        }
+
+      } catch (error) {
+        console.log(`   ❌ Error processing first leg ${firstLeg.run_ref}:`, error);
+        continue;
+      }
+    }
+
+    // Return results
+    journeyOptions.sort((a, b) => a.score - b.score);
+    console.log(`   ${journeyOptions.length > 0 ? '✅' : '❌'} ${journeyOptions.length} feasible journey options found`);
+    return {
+      journeys: journeyOptions.slice(0, request.max_results || 3),
+      metadata: { api_calls: apiCalls, cache_hits: cacheHits, execution_time_ms: 0, routes_considered: routesConsidered, connections_evaluated: connectionsEvaluated }
+    };
   }
 }

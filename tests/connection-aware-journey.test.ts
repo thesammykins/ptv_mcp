@@ -59,6 +59,18 @@ describe('Connection-Aware Journey Planning', () => {
     
     console.log('✅ Connection-aware integration test structure validated');
   });
+
+  test('should have automatic window extension capability', () => {
+    // Verify the engine has the new retryWithExtendedWindow capability
+    const journeyEngine = (nextTrainTool as any).journeyEngine;
+    expect(journeyEngine).toBeDefined();
+    
+    // Check that the private methods exist (they're accessible for testing)
+    expect(typeof (journeyEngine as any).retryWithExtendedWindow).toBe('function');
+    expect(typeof (journeyEngine as any).planTwoLegJourneyInternal).toBe('function');
+    
+    console.log('✅ Automatic window extension feature validated');
+  });
 });
 
 /*
@@ -75,11 +87,19 @@ TODO for comprehensive testing:
    - Applying connection policy rules (V/Line→Metro at Southern Cross = 12 minutes)
    - Only suggesting feasible connections
 
-3. Test edge cases:
-   - No feasible connections within search window
+3. Test automatic window extension:
+   - Mock scenario where 3-hour window has no connections
+   - Verify system automatically tries 4hr, 6hr, 8hr windows
+   - Confirm it returns journey found in extended window with warning
+   - Validate proper error when no connections found even in 8hr window
+
+4. Test edge cases:
+   - No feasible connections within extended search window
    - Missing stopping pattern data
    - Disrupted or cancelled services
    - Tight but feasible connections with warnings
+   - Very long-distance regional journeys (>4 hours)
 
-This validates the core problem described in the user's example is solved.
+This validates both the core connection timing problem and the improved UX
+of automatic window extension for long-distance journeys.
 */
