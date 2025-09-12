@@ -183,7 +183,7 @@ describe('NextTrain Tool Integration', () => {
     await expect(tool.execute({
       origin: 'StopA',
       destination: 'StopB'
-    })).rejects.toThrow('No train routes found connecting');
+    })).rejects.toThrow('No feasible connections found');
   });
 
   it('should handle no departures found error', async () => {
