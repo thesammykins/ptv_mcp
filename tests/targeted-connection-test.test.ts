@@ -3,7 +3,17 @@ import { JourneyTimingEngine, JourneyPlanningRequest } from '../src/features/jou
 import { PtvClient } from '../src/ptv/client';
 
 describe('Targeted Connection Test', () => {
+  const skipIfNoCredentials = () => {
+    if (!process.env.PTV_DEV_ID || !process.env.PTV_API_KEY) {
+      console.warn('⚠️ Skipping test - PTV API credentials not available');
+      return true;
+    }
+    return false;
+  };
+
   it('should plan Bendigo to Flinders Street journey (known working route)', async () => {
+    if (skipIfNoCredentials()) return;
+    
     const client = new PtvClient();
     const engine = new JourneyTimingEngine(client);
 
@@ -67,6 +77,8 @@ describe('Targeted Connection Test', () => {
   });
 
   it('should verify that the pattern endpoint is working correctly', async () => {
+    if (skipIfNoCredentials()) return;
+    
     const client = new PtvClient();
     
     console.log('🧪 Testing pattern endpoint directly with V/Line run');

@@ -4,7 +4,17 @@ import { ConnectionValidityStatus, StoppingPatternResponse } from '../src/ptv/ty
 import { TTLCache } from '../src/ptv/cache';
 
 describe('Fixed Pattern Implementation', () => {
+  const skipIfNoCredentials = () => {
+    if (!process.env.PTV_DEV_ID || !process.env.PTV_API_KEY) {
+      console.warn('⚠️ Skipping test - PTV API credentials not available');
+      return true;
+    }
+    return false;
+  };
+
   it('should correctly retrieve and process complete stopping patterns', async () => {
+    if (skipIfNoCredentials()) return;
+    
     const client = new PtvClient();
     
     // Test with a known V/Line run (Bendigo → Southern Cross)
@@ -118,6 +128,8 @@ describe('Fixed Pattern Implementation', () => {
   });
   
   it('should cache pattern results effectively', async () => {
+    if (skipIfNoCredentials()) return;
+    
     const client = new PtvClient();
     const patternCache = new TTLCache<StoppingPatternResponse>(5 * 60 * 1000); // 5 minute TTL
     

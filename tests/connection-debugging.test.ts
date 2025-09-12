@@ -23,14 +23,26 @@ describe('Connection-Aware Journey Planning Diagnostics', () => {
   let nextTrainTool: NextTrainTool;
   let journeyEngine: JourneyTimingEngine;
   
+  const skipIfNoCredentials = () => {
+    if (!process.env.PTV_DEV_ID || !process.env.PTV_API_KEY) {
+      console.warn('⚠️ Skipping test - PTV API credentials not available');
+      return true;
+    }
+    return false;
+  };
+
   beforeEach(() => {
-    // Initialize with production API credentials from .env
-    ptvClient = new PtvClient();
-    nextTrainTool = new NextTrainTool(ptvClient);
-    journeyEngine = new JourneyTimingEngine(ptvClient);
+    if (!skipIfNoCredentials()) {
+      // Initialize with production API credentials from .env
+      ptvClient = new PtvClient();
+      nextTrainTool = new NextTrainTool(ptvClient);
+      journeyEngine = new JourneyTimingEngine(ptvClient);
+    }
   });
 
   test('should resolve Bendigo and Flinders Street stops correctly', async () => {
+    if (skipIfNoCredentials()) return;
+    
     console.log('\n🔍 Testing stop resolution...');
     
     // Test Bendigo stop resolution
@@ -62,6 +74,8 @@ describe('Connection-Aware Journey Planning Diagnostics', () => {
   });
 
   test('should find direct routes between Bendigo and Flinders Street', async () => {
+    if (skipIfNoCredentials()) return;
+    
     console.log('\n🛤️  Testing direct route discovery...');
     
     const bendigoStops = await ptvClient.findTrainStops('Bendigo');
@@ -103,6 +117,8 @@ describe('Connection-Aware Journey Planning Diagnostics', () => {
   });
 
   test('should test V/Line departures from Bendigo', async () => {
+    if (skipIfNoCredentials()) return;
+    
     console.log('\n🚂 Testing V/Line departures from Bendigo...');
     
     const bendigoStops = await ptvClient.findTrainStops('Bendigo');
@@ -149,6 +165,8 @@ describe('Connection-Aware Journey Planning Diagnostics', () => {
   });
 
   test('should test stopping pattern retrieval for V/Line run', async () => {
+    if (skipIfNoCredentials()) return;
+    
     console.log('\n🗺️  Testing V/Line stopping pattern retrieval...');
     
     const bendigoStops = await ptvClient.findTrainStops('Bendigo');
@@ -209,6 +227,8 @@ describe('Connection-Aware Journey Planning Diagnostics', () => {
   });
 
   test('should test metro departures from Southern Cross to Flinders Street', async () => {
+    if (skipIfNoCredentials()) return;
+    
     console.log('\n🚇 Testing metro connection: Southern Cross → Flinders Street...');
     
     const southernCrossId = 1181; // Known Southern Cross Station ID
@@ -264,6 +284,8 @@ describe('Connection-Aware Journey Planning Diagnostics', () => {
   });
 
   test('should run journey timing engine step by step', async () => {
+    if (skipIfNoCredentials()) return;
+    
     console.log('\n🛠️  Testing Journey Timing Engine step by step...');
     
     const bendigoStops = await ptvClient.findTrainStops('Bendigo');
@@ -307,6 +329,8 @@ describe('Connection-Aware Journey Planning Diagnostics', () => {
   });
 
   test('should test NextTrainTool end-to-end', async () => {
+    if (skipIfNoCredentials()) return;
+    
     console.log('\n🎯 Testing NextTrainTool end-to-end...');
     
     const input = {

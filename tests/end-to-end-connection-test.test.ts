@@ -3,7 +3,17 @@ import { JourneyTimingEngine, JourneyPlanningRequest } from '../src/features/jou
 import { PtvClient } from '../src/ptv/client';
 
 describe('End-to-End Connection-Aware Journey Planning', () => {
+  const skipIfNoCredentials = () => {
+    if (!process.env.PTV_DEV_ID || !process.env.PTV_API_KEY) {
+      console.warn('⚠️ Skipping test - PTV API credentials not available');
+      return true;
+    }
+    return false;
+  };
+
   it('should plan Bendigo to South Morang journey with realistic connections', async () => {
+    if (skipIfNoCredentials()) return;
+    
     const client = new PtvClient();
     const engine = new JourneyTimingEngine(client);
 
@@ -125,6 +135,8 @@ describe('End-to-End Connection-Aware Journey Planning', () => {
   });
 
   it('should correctly use the pattern endpoint and caching', async () => {
+    if (skipIfNoCredentials()) return;
+    
     const client = new PtvClient();
     const engine = new JourneyTimingEngine(client);
 

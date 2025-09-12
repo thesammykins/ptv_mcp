@@ -2,7 +2,17 @@ import { describe, it, expect } from 'bun:test';
 import { ptvFetch } from '../src/ptv/http.js';
 
 describe('PTV Pattern Endpoint Test', () => {
+  const skipIfNoCredentials = () => {
+    if (!process.env.PTV_DEV_ID || !process.env.PTV_API_KEY) {
+      console.warn('⚠️ Skipping test - PTV API credentials not available');
+      return true;
+    }
+    return false;
+  };
+
   it('should retrieve stopping pattern using the correct /v3/pattern/run endpoint', async () => {
+    if (skipIfNoCredentials()) return;
+    
     // Test the V/Line Bendigo run that we know exists
     const runRef = '9737';
     const routeType = 3; // V/Line

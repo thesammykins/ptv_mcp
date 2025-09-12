@@ -3,7 +3,17 @@ import { NextTrainTool } from '../src/features/next_train/tool';
 import { PtvClient } from '../src/ptv/client';
 
 describe('Solution Validation: Fixed Pattern Endpoint', () => {
+  const skipIfNoCredentials = () => {
+    if (!process.env.PTV_DEV_ID || !process.env.PTV_API_KEY) {
+      console.warn('⚠️ Skipping test - PTV API credentials not available');
+      return true;
+    }
+    return false;
+  };
+
   it('should demonstrate the solution to the original 8-minute connection problem', async () => {
+    if (skipIfNoCredentials()) return;
+    
     console.log('🎯 SOLUTION VALIDATION: Testing the fixed pattern endpoint integration');
     console.log('   Original Problem: System suggested impossible 8-minute connections');
     console.log('   Root Cause: Wrong API endpoint returned incomplete stopping patterns');
@@ -94,6 +104,8 @@ describe('Solution Validation: Fixed Pattern Endpoint', () => {
   });
   
   it('should verify that the old broken approach is no longer used', async () => {
+    if (skipIfNoCredentials()) return;
+    
     console.log('🔍 VERIFICATION: Confirming old broken approach is fixed');
     
     const client = new PtvClient();
