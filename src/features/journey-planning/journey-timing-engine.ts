@@ -13,7 +13,7 @@
 
 import { PtvClient } from '../../ptv/client';
 import { connectionPolicy } from './connection-policy';
-import { parseUserTimeToMelbourneUTC, formatUTCForMelbourne } from '../../utils/melbourne-time';
+import { formatUTCForMelbourne } from '../../utils/melbourne-time';
 import { TTLCache } from '../../ptv/cache';
 import {
   ROUTE_TYPE,
@@ -23,10 +23,7 @@ import {
   JourneyErrorCode,
   PatternDeparture,
   DepartureItem,
-  RunResponse,
-  DeparturesResponse,
-  StoppingPatternResponse,
-  ResultStop
+  StoppingPatternResponse
 } from '../../ptv/types';
 
 export interface JourneyPlanningRequest {
@@ -148,7 +145,6 @@ export class JourneyTimingEngine {
       {
         date_utc: earliestDeparture,
         max_results: 20,
-        expand: ['run', 'route', 'stop']
       }
     );
 
@@ -160,12 +156,11 @@ export class JourneyTimingEngine {
         {
           date_utc: earliestDeparture,
           max_results: 20,
-          expand: ['run', 'route', 'stop']
         }
       );
       if (vlineDepartures.departures) {
         departures.departures = vlineDepartures.departures;
-        departures.routes = vlineDepartures.routes;
+        departures.routes = vlineDepartures.routes || {};
       }
     }
 
@@ -189,7 +184,7 @@ export class JourneyTimingEngine {
       let interchangeName: string;
 
       if (preferredInterchanges && preferredInterchanges.length > 0) {
-        interchangeStopId = preferredInterchanges[0];
+        interchangeStopId = preferredInterchanges[0]!;
         interchangeName = 'Preferred Interchange';
       } else if (routeType === ROUTE_TYPE.VLINE) {
         interchangeStopId = connectionPolicy.getSouthernCrossStationId();
@@ -220,9 +215,7 @@ export class JourneyTimingEngine {
       return cached;
     }
 
-    const pattern = await this.ptvClient.getRunPattern(runRef, routeType, {
-      expand: [1, 2, 3] // STOP, ROUTE, RUN
-    });
+    const pattern = await this.ptvClient.getRunPattern(runRef, routeType);
     
     this.patternCache.set(cacheKey, pattern);
     return pattern;
@@ -273,7 +266,6 @@ export class JourneyTimingEngine {
       {
         date_utc: earliestConnectionTime,
         max_results: 15,
-        expand: ['run', 'route', 'stop']
       }
     );
 
@@ -350,7 +342,7 @@ export class JourneyTimingEngine {
           arrival_utc: interchangeArrival.scheduled_departure_utc!,
           departure_local: formatUTCForMelbourne(firstLeg.scheduled_departure_utc!),
           arrival_local: formatUTCForMelbourne(interchangeArrival.scheduled_departure_utc!),
-          platform_number: firstLeg.platform_number || undefined,
+          ...(firstLeg.platform_number ? { platform_number: firstLeg.platform_number } : {}),
           realtime_used: !!firstLeg.estimated_departure_utc,
           cancellation: false,
           duration_minutes: Math.round((interchangeArrivalTime.getTime() - firstLegDeparture.getTime()) / (60 * 1000))
@@ -368,7 +360,7 @@ export class JourneyTimingEngine {
           arrival_utc: destinationArrival.toISOString(),
           departure_local: formatUTCForMelbourne(secondLeg.scheduled_departure_utc!),
           arrival_local: formatUTCForMelbourne(destinationArrival.toISOString()),
-          platform_number: secondLeg.platform_number || undefined,
+          ...(secondLeg.platform_number ? { platform_number: secondLeg.platform_number } : {}),
           realtime_used: !!secondLeg.estimated_departure_utc,
           cancellation: false,
           duration_minutes: secondLegDurationMinutes
@@ -382,10 +374,10 @@ export class JourneyTimingEngine {
           at_stop_name: firstLeg.interchange_name,
           min_required_minutes: minConnectionTime,
           actual_wait_minutes: actualWaitMinutes,
-          from_platform: interchangeArrival.platform_number || undefined,
-          to_platform: secondLeg.platform_number || undefined,
+          ...(interchangeArrival.platform_number ? { from_platform: interchangeArrival.platform_number } : {}),
+          ...(secondLeg.platform_number ? { to_platform: secondLeg.platform_number } : {}),
           validity_status: connectionValidation.status,
-          warning_message: connectionValidation.warning
+          ...(connectionValidation.warning ? { warning_message: connectionValidation.warning } : {})
         }
       ];
 

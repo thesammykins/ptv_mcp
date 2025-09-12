@@ -428,7 +428,7 @@ export class NextTrainTool {
       const request: JourneyPlanningRequest = {
         origin_stop_id: originStop.stop_id!,
         destination_stop_id: destinationStop.stop_id!,
-        earliest_departure_utc: input.time ? parseUserTimeToMelbourneUTC(input.time) : undefined,
+        earliest_departure_utc: input.time ? parseUserTimeToMelbourneUTC(input.time) : new Date().toISOString(),
         max_results: 1, // Just get the best option
         search_window_minutes: 180
       };

@@ -6,7 +6,6 @@ import type {
   DeparturesResponse,
   DirectionsResponse,
   DisruptionsResponse,
-  RunResponse,
   RoutesResponse,
   RunsResponse,
   StoppingPatternResponse,

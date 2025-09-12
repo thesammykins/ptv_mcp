@@ -117,7 +117,7 @@ class ConnectionPolicyEngine {
     }
     
     // Check if platforms are in same group (e.g., both V/Line)
-    for (const [groupName, platforms] of Object.entries(platformGroups)) {
+    for (const [, platforms] of Object.entries(platformGroups)) {
       if (platforms.includes(fromPlatform) && platforms.includes(toPlatform)) {
         return policies.same_platform || policies.cross_platform || 0;
       }
@@ -170,7 +170,7 @@ class ConnectionPolicyEngine {
     if (buffer <= this.config.tight_connection_threshold) {
       return {
         status: ConnectionValidityStatus.TIGHT,
-        warning: this.config.warnings.tight_connection
+        warning: 'Tight connection - arrive promptly at platform'
       };
     }
     
